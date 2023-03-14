@@ -22,7 +22,7 @@ fastify.register(require("./routes/websocket"));
 (async () => {
     try {
         await fastify.listen({ port: 80 });
-        console.log("connected")
+        console.log("Server is now listening to port 80")
     } catch (er) {
         console.log(er);
     }

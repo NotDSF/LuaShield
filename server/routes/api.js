@@ -72,6 +72,21 @@ async function routes(fastify, options) {
         required: ["script_id", "identifier"]
     }
     
+    const UpdateScriptSchema = {
+        type: "object",
+        properties: {
+            script_name: { type: "string", maxLength: 20, minLength: 3 },
+            script_id: { type: "string" },
+            script: { type: "string" },
+            success_webhook: { type: "string", maxLength: 150, minLength: 50 },
+            blacklist_webhook: { type: "string", maxLength: 150, minLength: 50 },
+            unauthorized_webhook: { type: "string", maxLength: 150, minLength: 50 }
+        },
+        required: ["script_id", "script"]
+    }
+
+    fastify.get("/status", { websocket: false }, (request, reply) => reply.send({ online: true }))
+
     fastify.get("/valid_api_key", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, (request, reply) => reply.send({ success: true }));
 
     fastify.post("/make_script", { schema: { headers: HeadersSchema, body: MakeScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
@@ -160,6 +175,59 @@ async function routes(fastify, options) {
             return reply.status(500).send({ error: er.toString() });
         }
     });
+
+    /*
+    fastify.post("/update_script", { schema: { headers: HeadersSchema, body: UpdateScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const Name = request.body.script_name;
+        const ScriptID = request.body.script_id;
+
+        let Script = request.body.script;
+        let SuccessWebhook = request.body.success_webhook;
+        let BlacklistWebhook = request.body.blacklist_webhook;
+        let UnauthorizedWebhook = request.body.unauthorized_webhook;
+
+        if (!Database.ScriptOwnedByBuyer(request.APIKey, ScriptID)) {
+            return reply.status(400).send({ error: "You don't own this script" });
+        }
+
+        if (SuccessWebhook && BlacklistWebhook && UnauthorizedWebhook) {
+            SuccessWebhook = SuccessWebhook.match(/discord\.com\/api\/webhooks\/\d+\/[\S]+$/);
+            BlacklistWebhook = BlacklistWebhook.match(/discord\.com\/api\/webhooks\/\d+\/[\S]+$/);
+            UnauthorizedWebhook = UnauthorizedWebhook.match(/discord\.com\/api\/webhooks\/\d+\/[\S]+$/);
+    
+            if (!SuccessWebhook) {
+                return reply.send({ error: "success_webhook is not a valid webhook" });
+            }
+    
+            if (!BlacklistWebhook) {
+                return reply.send({ error: "blacklist_webhook is not a valid webhook" });
+            }
+    
+            if (!UnauthorizedWebhook) {
+                return reply.send({ error: "unauthorized_webhook is not a valid webhook" });
+            }
+    
+            SuccessWebhook = "https://" + SuccessWebhook.shift();
+            BlacklistWebhook = "https://" + BlacklistWebhook.shift();
+            UnauthorizedWebhook = "https://" + UnauthorizedWebhook.shift();
+
+            try {
+                await webhooks.SetupWebhook(SuccessWebhook, Name, "success");
+                await webhooks.SetupWebhook(BlacklistWebhook, Name, "blacklist");
+                await webhooks.SetupWebhook(UnauthorizedWebhook, Name, "unauthorized");
+            } catch (er) {
+                return reply.status(500).send({ error: er.toString() });
+            }
+        }
+
+        Script = Buffer.from(Script, "base64").toString();
+        try {
+            Script = await macros(Script, true);
+        } catch (er) {
+            return reply.status(500).send({ error: er.toString() });
+        }
+    });
+    */
 
     // TODO: UPDATE_SCRIPT
 
