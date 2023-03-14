@@ -7,8 +7,8 @@ let options = {
 
 if (process.platform !== "win32") {
     options.https = {
-        key: readFileSync(path.join(__dirname, 'luashield.key')),
-        cert: readFileSync(path.join(__dirname, 'luashield.pem'))
+        key: readFileSync(path.join(__dirname, 'luashield.key'), "utf-8"),
+        cert: readFileSync(path.join(__dirname, 'luashield.pem'), "utf-8")
     }
 }
 
