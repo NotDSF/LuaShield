@@ -14,7 +14,7 @@ if (process.platform !== "win32") {
 
 const fastify = require("fastify")(options);
 
-if (!existsSync(path.join(__dirname, "/scripts"))) {
+if (!existsSync(path.join(__dirname, "../scripts"))) {
     mkdirSync(path.join(__dirname, "../scripts"));
 }
 
