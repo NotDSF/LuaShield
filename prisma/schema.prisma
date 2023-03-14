@@ -1,0 +1,51 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid()) @map("_id")
+  Key           String   @unique
+  Identifier    String   @unique
+  HWID          String?  @unique
+  ScriptID      String   @unique
+  Executions    Int      @default(0)
+  CrackAttempts Int      @default(0)
+  Exploit       String?
+  Whitelisted   Boolean  @default(true)
+  CreatedAt     DateTime @default(now())
+  ExpireAt      Int?
+}
+
+model Script {
+  id                  String   @id @default(uuid()) @map("_id")
+  Executions          Int      @default(0)
+  CrackAttempts       Int      @default(0)
+  Users               Int      @default(0)
+  Name                String
+  SuccessWebhook      String
+  BlacklistWebhook    String
+  UnauthorizedWebhook String
+  Online              Boolean
+  Version             String
+  Versions            String[] @default([])
+}
+
+model Buyer {
+  id            String   @id @default(uuid()) @map("_id")
+  OwnedScripts  String[] @default([])
+  Email         String   @unique
+  Password      String   @unique
+  APIKey        String   @unique
+  Subscription  String?
+  CustomerID    String?
+  BypassPayment Boolean?
+  DiscordID     String   @unique @default("")
+}
