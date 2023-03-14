@@ -1,6 +1,18 @@
-const { existsSync, mkdirSync } = require("fs");
+const { existsSync, mkdirSync, readFileSync } = require("fs");
 const path = require("path");
-const fastify = require("fastify")({ logger: true });
+
+let options = {
+    logger: true
+}
+
+if (process.platform !== "win32") {
+    options.https = {
+        key: readFileSync(path.join(__dirname, 'luashield.key')),
+        cert: readFileSync(path.join(__dirname, 'luashield.pem'))
+    }
+}
+
+const fastify = require("fastify")(options);
 
 if (!existsSync(path.join(__dirname, "/scripts"))) {
     mkdirSync(path.join(__dirname, "../scripts"));
