@@ -33,7 +33,7 @@ fastify.register(require("./routes/websocket"));
 
 (async () => {
     try {
-        await fastify.listen({ port: process.platform == "win32" ? 80 : 443 });
+        await fastify.listen({ port: process.platform == "win32" ? 80 : 443, host: '127.0.0.1' });
         console.log("Server is now listening to port 80")
     } catch (er) {
         console.log(er);
