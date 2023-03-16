@@ -67,7 +67,8 @@ async function routes(fastify, options) {
         properties: {
             script_id: { type: "string" },
             identifier: { type: "string", maxLength: 20, minLength: 5 },
-            expire: { type: "string" }
+            expire: { type: "string" },
+            usage: { type: "number", minimum: 0 }
         },
         required: ["script_id", "identifier"]
     }
@@ -235,6 +236,7 @@ async function routes(fastify, options) {
         const ScriptID = request.body.script_id;
         const Identifier = request.body.identifier;
         const Expiry = request.body.expire;
+        const Usage = request.body.usage || 0;
 
         if (Expiry && new Date(Expiry).toString() == "Invalid Date" || Date.now() > Expiry) {
             return reply.stauts(400).send({ error: "Expire must be a valid unix epoch timestamp" });
@@ -251,7 +253,7 @@ async function routes(fastify, options) {
 
         const Key = crypto.randomUUID();
         try {
-            await Database.WhitelistUser(Identifier, crypto.sha512(Key), ScriptID, Expiry);
+            await Database.WhitelistUser(Identifier, crypto.sha512(Key), ScriptID, Expiry, Usage);
         } catch (er) {
             console.log(er);
             return reply.status(500).send({ error: "There was an issue creating this user" });

@@ -36,6 +36,7 @@ model Script {
   Online              Boolean
   Version             String
   Versions            String[] @default([])
+  MaxExecutions       Int      @default(0)
 }
 
 model Buyer {

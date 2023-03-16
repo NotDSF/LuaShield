@@ -169,6 +169,14 @@ async function routes(fastify, options) {
 				});
 				return reply.status(502);
 			}
+
+			if (Whitelist.MaxExecutions !== 0 && Whitelit.Executions >= Whitelist.MaxExecutions) {
+				await webhooks.Unauthorized(Script.UnauthorizedWebhook, {
+					IP: request.ip,
+					Reason: `This user has reached their maximum amount of executions (${Whitelist.MaxExecutions}), identifier: \`${Whitelist.Identifier}\``
+				});
+				return reply.status(502);
+			}
 		}
 
 		if (WebsocketKey !== RecievedWS || !Flag) {
