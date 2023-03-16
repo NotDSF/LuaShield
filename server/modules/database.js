@@ -277,5 +277,32 @@ module.exports = class Database {
             }
         })
     }
+
+    async UpdateScript(ScriptID, Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, Version, Exploits) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.script.update({
+                    where: { id: ScriptID },
+                    data: {
+                        Version: Version,
+                        Versions: {
+                            push: Version
+                        },
+                        Name: Name,
+                        SynapseX: Exploits.synapse_x,
+                        ScriptWare: Exploits.script_ware,
+                        SynapseV3: Exploits.synapse_v3,
+                        SuccessWebhook: SuccessWebhook,
+                        BlacklistWebhook: BlacklistWebhook,
+                        UnauthorizedWebhook: UnauthorizedWebhook
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
 }
 

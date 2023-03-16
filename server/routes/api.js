@@ -5,7 +5,7 @@ const macros = require("../macros/index");
 const path = require("path");
 const validator = require("email-validator");
 const { Luraph } = require("luraph");
-const { readFileSync, mkdirSync, writeFileSync } = require("fs");
+const { readFileSync, mkdirSync, writeFileSync, renameSync, existsSync } = require("fs");
 
 const Database = new database();
 const luraph = new Luraph("ad355e4585dfea0baf319d453ef3a728e60fe3a789e96fbd84609fc997b79a00");
@@ -109,9 +109,18 @@ async function routes(fastify, options) {
             script: { type: "string" },
             success_webhook: { type: "string", maxLength: 150, minLength: 50 },
             blacklist_webhook: { type: "string", maxLength: 150, minLength: 50 },
-            unauthorized_webhook: { type: "string", maxLength: 150, minLength: 50 }
+            unauthorized_webhook: { type: "string", maxLength: 150, minLength: 50 },
+            allowed_exploits: { 
+                type: "object",
+                properties: {
+                    synapse_x: { type: "boolean" },
+                    script_ware: { type: "boolean" },
+                    synapse_v3: { type: "boolean" }
+                },
+                required: ["synapse_x", "script_ware", "synapse_v3"]
+            }
         },
-        required: ["script_id", "script"]
+        required: ["script_id"]
     }
 
     fastify.get("/status", { websocket: false }, (request, reply) => reply.send({ online: true }))
@@ -248,12 +257,14 @@ async function routes(fastify, options) {
         }
     });
 
-    /*
+    
     fastify.post("/update_script", { schema: { headers: HeadersSchema, body: UpdateScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
-        const Name = request.body.script_name;
         const ScriptID = request.body.script_id;
-
         let Script = request.body.script;
+
+        // values which could exist or not
+        let Name = request.body.script_name;
+        let Exploits = request.body.allowed_exploits;
         let SuccessWebhook = request.body.success_webhook;
         let BlacklistWebhook = request.body.blacklist_webhook;
         let UnauthorizedWebhook = request.body.unauthorized_webhook;
@@ -262,34 +273,55 @@ async function routes(fastify, options) {
             return reply.status(400).send({ error: "You don't own this script" });
         }
 
-        if (SuccessWebhook && BlacklistWebhook && UnauthorizedWebhook) {
-            SuccessWebhook = SuccessWebhook.match(/discord\.com\/api\/webhooks\/\d+\/[\S]+$/);
-            BlacklistWebhook = BlacklistWebhook.match(/discord\.com\/api\/webhooks\/\d+\/[\S]+$/);
-            UnauthorizedWebhook = UnauthorizedWebhook.match(/discord\.com\/api\/webhooks\/\d+\/[\S]+$/);
-    
-            if (!SuccessWebhook) {
-                return reply.send({ error: "success_webhook is not a valid webhook" });
-            }
-    
-            if (!BlacklistWebhook) {
-                return reply.send({ error: "blacklist_webhook is not a valid webhook" });
-            }
-    
-            if (!UnauthorizedWebhook) {
-                return reply.send({ error: "unauthorized_webhook is not a valid webhook" });
-            }
-    
-            SuccessWebhook = "https://" + SuccessWebhook.shift();
-            BlacklistWebhook = "https://" + BlacklistWebhook.shift();
-            UnauthorizedWebhook = "https://" + UnauthorizedWebhook.shift();
+        let ScriptInfo = await Database.GetScript(ScriptID);
+        SuccessWebhook = SuccessWebhook || ScriptInfo.SuccessWebhook;
+        BlacklistWebhook = BlacklistWebhook || ScriptInfo.BlacklistWebhook;
+        UnauthorizedWebhook = UnauthorizedWebhook || ScriptInfo.UnauthorizedWebhook;
+        Name = Name || ScriptInfo.Name;
+        Exploits = Exploits || { synapse_x: ScriptInfo.SynapseX, script_ware: ScriptInfo.ScriptWare, synapse_v3: ScriptInfo.SynapseV3 };
 
-            try {
-                await webhooks.SetupWebhook(SuccessWebhook, Name, "success");
-                await webhooks.SetupWebhook(BlacklistWebhook, Name, "blacklist");
-                await webhooks.SetupWebhook(UnauthorizedWebhook, Name, "unauthorized");
-            } catch (er) {
-                return reply.status(500).send({ error: er.toString() });
+        SuccessWebhook = SuccessWebhook.match(/discord\.com\/api\/webhooks\/\d+\/[\S]+$/);
+        BlacklistWebhook = BlacklistWebhook.match(/discord\.com\/api\/webhooks\/\d+\/[\S]+$/);
+        UnauthorizedWebhook = UnauthorizedWebhook.match(/discord\.com\/api\/webhooks\/\d+\/[\S]+$/);
+
+        if (!SuccessWebhook) {
+            return reply.send({ error: "success_webhook is not a valid webhook" });
+        }
+
+        if (!BlacklistWebhook) {
+            return reply.send({ error: "blacklist_webhook is not a valid webhook" });
+        }
+
+        if (!UnauthorizedWebhook) {
+            return reply.send({ error: "unauthorized_webhook is not a valid webhook" });
+        }
+
+        SuccessWebhook = "https://" + SuccessWebhook.shift();
+        BlacklistWebhook = "https://" + BlacklistWebhook.shift();
+        UnauthorizedWebhook = "https://" + UnauthorizedWebhook.shift();
+
+        try {
+            await webhooks.SetupWebhook(SuccessWebhook, Name, "success");
+            await webhooks.SetupWebhook(BlacklistWebhook, Name, "blacklist");
+            await webhooks.SetupWebhook(UnauthorizedWebhook, Name, "unauthorized");
+        } catch (er) {
+            return reply.status(500).send({ error: er.toString() });
+        }
+
+        const OldVersion = ScriptInfo.Version;
+        const GeneratedVersion = `v${crypto.randomUUID().substr(0, 5)}`;
+        try {
+            ScriptInfo = await Database.UpdateScript(ScriptID, Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, GeneratedVersion, Exploits);
+        } catch (er) {
+            return reply.status(500).send({ error: "There was an issue with updating this script" });
+        }
+
+        // do not need to reobfuscate end here
+        if (!Script) {
+            if (existsSync(path.join(__dirname, `../scripts/${ScriptID}/${OldVersion}.lua`))) {
+                renameSync(path.join(__dirname, `../scripts/${ScriptID}/${OldVersion}.lua`), path.join(__dirname, `../scripts/${ScriptID}/${GeneratedVersion}.lua`));
             }
+            return reply.send(ScriptInfo);
         }
 
         Script = Buffer.from(Script, "base64").toString();
@@ -298,8 +330,39 @@ async function routes(fastify, options) {
         } catch (er) {
             return reply.status(500).send({ error: er.toString() });
         }
+        
+        let Whitelist = readFileSync(path.join(__dirname, "../../client/client.lua"), "utf-8")
+            .replace(Regex("ws://localhost:8880", "wss://luashield.com"))
+            .replace("local function LPH_CRASH() error(\"Blocked crash\"); end;", "")
+            .replace("SCRIPT_ID", ScriptID)
+            .replace("--_SCRIPT_--", Script);
+
+        try {
+            Whitelist = await macros(Whitelist);
+
+            const { jobId } = await luraph.createNewJob("main", Whitelist, `${ScriptID}.lua`, {
+                INTENSE_VM_STRUCTURE: true,
+                TARGET_VERSION: "Luau Handicapped",
+                VM_ENCRYPTION: true,
+                ENABLE_GC_FIXES: false,
+                DISABLE_LINE_INFORMATION: true,
+                USE_DEBUG_LIBRARY: true
+            });
+
+            const { success, error } = await luraph.getJobStatus(jobId);
+            if (!success) {
+                return reply.status(500).send({ error: error });
+            }
+
+            const { data } = await luraph.downloadResult(jobId);
+            writeFileSync(path.join(__dirname, `../scripts/${ScriptID}/${GeneratedVersion}.lua`), data);
+            
+            reply.send(ScriptInfo);
+        } catch (er) {
+            return reply.status(500).send({ error: er.toString() });
+        }
     });
-    */
+    
 
     // TODO: UPDATE_SCRIPT
 

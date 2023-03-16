@@ -22,6 +22,7 @@ model User {
   Whitelisted   Boolean  @default(true)
   CreatedAt     DateTime @default(now())
   ExpireAt      Int?
+  MaxExecutions Int      @default(0)
 }
 
 model Script {
@@ -36,7 +37,6 @@ model Script {
   Online              Boolean
   Version             String
   Versions            String[] @default([])
-  MaxExecutions       Int      @default(0)
   SynapseX            Boolean
   ScriptWare          Boolean
   SynapseV3           Boolean
