@@ -37,6 +37,9 @@ model Script {
   Version             String
   Versions            String[] @default([])
   MaxExecutions       Int      @default(0)
+  SynapseX            Boolean
+  ScriptWare          Boolean
+  SynapseV3           Boolean
 }
 
 model Buyer {
@@ -45,6 +48,7 @@ model Buyer {
   Email         String   @unique
   Password      String   @unique
   APIKey        String   @unique
+  Username      String
   Subscription  String?
   CustomerID    String?
   BypassPayment Boolean?

@@ -3,6 +3,7 @@ const webhooks = require("../modules/webhooks");
 const crypto = require("../modules/crypto");
 const macros = require("../macros/index");
 const path = require("path");
+const validator = require("email-validator");
 const { Luraph } = require("luraph");
 const { readFileSync, mkdirSync, writeFileSync } = require("fs");
 
@@ -22,7 +23,6 @@ async function routes(fastify, options) {
     /**
      * @param {import("fastify").FastifyRequest} request
      * @param {import("fastify").FastifyReply} reply 
-     * @param {*} done 
      */
     async function AuthenticationHandler(request, reply) {
         const APIKey = request.headers["luashield-api-key"];
@@ -57,9 +57,18 @@ async function routes(fastify, options) {
             script: { type: "string" },
             success_webhook: { type: "string", maxLength: 150, minLength: 50 },
             blacklist_webhook: { type: "string", maxLength: 150, minLength: 50 },
-            unauthorized_webhook: { type: "string", maxLength: 150, minLength: 50 }
+            unauthorized_webhook: { type: "string", maxLength: 150, minLength: 50 },
+            allowed_exploits: { 
+                type: "object",
+                properties: {
+                    synapse_x: { type: "boolean" },
+                    script_ware: { type: "boolean" },
+                    synapse_v3: { type: "boolean" }
+                },
+                required: ["synapse_x", "script_ware", "synapse_v3"]
+            }
         },
-        required: ["script_name", "script", "success_webhook", "blacklist_webhook", "unauthorized_webhook"]
+        required: ["script_name", "script", "success_webhook", "blacklist_webhook", "unauthorized_webhook", "allowed_exploits"]
     }
 
     const WhiteistUserSchema = {
@@ -73,6 +82,16 @@ async function routes(fastify, options) {
         required: ["script_id", "identifier"]
     }
     
+    const SignupSchema = {
+        type: "object",
+        properties: {
+            email: { type: "string" },
+            password: { type: "string", minLength: 6, maxLength: 20 },
+            username: { type: "string", minLength: 3, maxLength: 10 }
+        },
+        required: ["email", "password", "username"]
+    }
+
     const UpdateScriptSchema = {
         type: "object",
         properties: {
@@ -88,30 +107,57 @@ async function routes(fastify, options) {
 
     fastify.get("/status", { websocket: false }, (request, reply) => reply.send({ online: true }))
 
+    fastify.post("/signup", { schema: { body: SignupSchema }, websocket: false }, async (request, reply) => {
+        const Email = request.body.email;
+        const Password = request.body.password;
+        const Username = request.body.username;
+
+        if (!validator.validate(Email)) {
+            return reply.status(400).send({ error: "Email is invalid" });
+        }
+
+        if (!Password.match(/[A-Z]+/)) {
+            return reply.status(400).send({ error: "Your password must include at least one uppercase letter" })
+        }
+
+        if (await Database.GetBuyerFromEmail(Email)) {
+            return reply.status(400).send({ error: "This email is already registered to another user" });
+        }
+
+        const APIKey = crypto.randomUUID();
+        try {
+            await Database.AddBuyer(Email, Username, crypto.sha512(Password), APIKey);
+            return reply.send({ APIKey: APIKey });
+        } catch (er) {
+            return reply.status(500).send({ error: "There was an error with creating your account" });
+        }
+    });
+
     fastify.get("/valid_api_key", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, (request, reply) => reply.send({ success: true }));
 
     fastify.post("/make_script", { schema: { headers: HeadersSchema, body: MakeScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const Name = request.body.script_name;
-        
+        const Exploits = request.body.allowed_exploits;
+
         let Script = request.body.script;
         let SuccessWebhook = request.body.success_webhook;
         let BlacklistWebhook = request.body.blacklist_webhook;
         let UnauthorizedWebhook = request.body.unauthorized_webhook;
-
+        
         SuccessWebhook = SuccessWebhook.match(/discord\.com\/api\/webhooks\/\d+\/[\S]+$/);
         BlacklistWebhook = BlacklistWebhook.match(/discord\.com\/api\/webhooks\/\d+\/[\S]+$/);
         UnauthorizedWebhook = UnauthorizedWebhook.match(/discord\.com\/api\/webhooks\/\d+\/[\S]+$/);
 
         if (!SuccessWebhook) {
-            return reply.send({ error: "success_webhook is not a valid webhook" });
+            return reply.status(400).send({ error: "success_webhook is not a valid webhook" });
         }
 
         if (!BlacklistWebhook) {
-            return reply.send({ error: "blacklist_webhook is not a valid webhook" });
+            return reply.status(400).send({ error: "blacklist_webhook is not a valid webhook" });
         }
 
         if (!UnauthorizedWebhook) {
-            return reply.send({ error: "unauthorized_webhook is not a valid webhook" });
+            return reply.status(400).send({ error: "unauthorized_webhook is not a valid webhook" });
         }
 
         SuccessWebhook = "https://" + SuccessWebhook.shift();
@@ -136,7 +182,7 @@ async function routes(fastify, options) {
         const GeneratedVersion = `v${crypto.randomUUID().substr(0, 5)}`;
         let ScriptInfo;
         try {
-            ScriptInfo = await Database.MakeScript(Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, GeneratedVersion);
+            ScriptInfo = await Database.MakeScript(Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, GeneratedVersion, Exploits);
         } catch (er) {
             return reply.status(500).send({ error: "There was an issue while creating this script" });
         }

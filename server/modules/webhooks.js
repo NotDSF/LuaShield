@@ -150,7 +150,7 @@ async function SetupWebhook(webhook, name, type) {
                 reject(`${webhook} doesn't exist`);
             }
     
-            let Huh = await fetch(webhook, {
+            await fetch(webhook, {
                 method: "POST",
                 headers: {
                     "content-type": "application/json"
@@ -160,8 +160,7 @@ async function SetupWebhook(webhook, name, type) {
                     avatar_url: "https://i.imgur.com/6xyJbAg.png",
                     content: `This channel is now being used for LuaShield **${type}** alerts, script: \`${name}\``
                 })
-            }).then(res => res.text());
-            console.log(Huh);
+            });
 
             resolve();
         } catch (er) {

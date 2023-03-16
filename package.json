@@ -11,7 +11,9 @@
   "license": "ISC",
   "dependencies": {
     "@fastify/websocket": "^7.1.2",
-    "@prisma/client": "^4.10.1",
+    "@prisma/client": "^4.11.0",
+    "@prisma/extension-accelerate": "^0.1.1",
+    "email-validator": "^2.0.4",
     "fastify": "^4.13.0",
     "fastify-websocket": "^4.3.0",
     "libsodium": "^0.7.11",
@@ -20,8 +22,5 @@
     "node-fetch": "^2.6.9",
     "random": "^3.0.6",
     "utf8": "^3.0.0"
-  },
-  "devDependencies": {
-    "prisma": "^4.10.1"
   }
 }

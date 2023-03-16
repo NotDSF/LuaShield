@@ -129,6 +129,14 @@ async function routes(fastify, options) {
 			return reply.status(502);
 		}
 
+		if (!Script.SynapseX && request.Exploit === "Synapse X" || !Script.ScriptWare && request.Exploit === "Script Ware" || !Script.SynapseV3 && request.Exploit === "Synapse V3") {
+			await webhooks.Unauthorized(Script.UnauthorizedWebhook, {
+				IP: request.ip,
+				Reason: `This user tried running this script on a disallowed exploit (${request.Exploit}), identifier: ${Whitelist.Identifier}`
+			});
+			return reply.status(502);
+		}
+
 		if (Whitelist) {
 			if (!Whitelist.Whitelisted) {
 				return reply.status(502);

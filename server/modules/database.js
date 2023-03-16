@@ -128,7 +128,7 @@ module.exports = class Database {
         });
     }
 
-    async MakeScript(Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, Version) {
+    async MakeScript(Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, Version, Exploits) {
         return new Promise(async (resolve, reject) => {
             try {
                 const Result = await prisma.script.create({
@@ -139,7 +139,10 @@ module.exports = class Database {
                         UnauthorizedWebhook: UnauthorizedWebhook,
                         Online: true,
                         Version: Version,
-                        Versions: [Version]
+                        Versions: [Version],
+                        SynapseX: Exploits.synapse_x,
+                        ScriptWare: Exploits.script_ware,
+                        SynapseV3: Exploits.synapse_v3
                     }
                 });
                 resolve(Result);
@@ -218,6 +221,37 @@ module.exports = class Database {
                 reject()
             }
         }); 
+    }
+
+    async GetBuyerFromEmail(Email) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Buyer = await prisma.buyer.findUnique({ where: { Email: Email } });
+                resolve(Buyer)
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
+
+    async AddBuyer(Email, Username, Password, APIKey) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.buyer.create({
+                    data: {
+                        Email: Email,
+                        Password: Password,
+                        Username: Username,
+                        APIKey: APIKey
+                    }
+                })
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        })
     }
 }
 
