@@ -105,7 +105,6 @@ async function routes(fastify, options) {
         type: "object",
         properties: {
             script_name: { type: "string", maxLength: 20, minLength: 3 },
-            script_id: { type: "string" },
             script: { type: "string" },
             success_webhook: { type: "string", maxLength: 150, minLength: 50 },
             blacklist_webhook: { type: "string", maxLength: 150, minLength: 50 },
@@ -119,8 +118,14 @@ async function routes(fastify, options) {
                 },
                 required: ["synapse_x", "script_ware", "synapse_v3"]
             }
-        },
-        required: ["script_id"]
+        }
+    }
+
+    const ScriptIDParamSchema = {
+        type: "object",
+        properties: {
+            id: { type: "string" }
+        }
     }
 
     fastify.get("/status", { websocket: false }, (request, reply) => reply.send({ online: true }))
@@ -257,8 +262,8 @@ async function routes(fastify, options) {
         }
     });
     
-    fastify.post("/update_script", { schema: { headers: HeadersSchema, body: UpdateScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
-        const ScriptID = request.body.script_id;
+    fastify.post("/:id/update", { schema: { headers: HeadersSchema, body: UpdateScriptSchema, params: ScriptIDParamSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ScriptID = request.params.id;
         let Script = request.body.script;
 
         // values which could exist or not
@@ -273,6 +278,10 @@ async function routes(fastify, options) {
         }
 
         let ScriptInfo = await Database.GetScript(ScriptID);
+        if (!ScriptInfo) {
+            return reply.status(400).send({ error: "This script doesn't exist" });
+        }
+        
         SuccessWebhook = SuccessWebhook || ScriptInfo.SuccessWebhook;
         BlacklistWebhook = BlacklistWebhook || ScriptInfo.BlacklistWebhook;
         UnauthorizedWebhook = UnauthorizedWebhook || ScriptInfo.UnauthorizedWebhook;
