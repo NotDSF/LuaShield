@@ -256,7 +256,6 @@ async function routes(fastify, options) {
             return reply.status(500).send({ error: er.toString() });
         }
     });
-
     
     fastify.post("/update_script", { schema: { headers: HeadersSchema, body: UpdateScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
@@ -363,9 +362,6 @@ async function routes(fastify, options) {
         }
     });
     
-
-    // TODO: UPDATE_SCRIPT
-
     fastify.post("/whitelist_user", { schema: { headers: HeadersSchema, body: WhiteistUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
         const Identifier = request.body.identifier;
