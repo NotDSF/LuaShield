@@ -235,6 +235,30 @@ module.exports = class Database {
         });
     }
 
+    async GetBuyerFromUsername(Username) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Buyer = await prisma.buyer.findUnique({ where: { Username: Username } });
+                resolve(Buyer)
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
+
+    async GetBuyer(Username, Password) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Buyer = await prisma.buyer.findFirst({ where: { Username: Username, Password: Password } });
+                resolve(Buyer)
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        })
+    }
+
     async AddBuyer(Email, Username, Password, APIKey) {
         return new Promise(async (resolve, reject) => {
             try {

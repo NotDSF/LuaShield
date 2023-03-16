@@ -92,6 +92,15 @@ async function routes(fastify, options) {
         required: ["email", "password", "username"]
     }
 
+    const LoginSchema = {
+        type: "object",
+        properties: {
+            password: { type: "string", minLength: 6, maxLength: 20 },
+            username: { type: "string", minLength: 3, maxLength: 10 }
+        },
+        required: ["password", "username"]
+    }
+
     const UpdateScriptSchema = {
         type: "object",
         properties: {
@@ -124,6 +133,10 @@ async function routes(fastify, options) {
             return reply.status(400).send({ error: "This email is already registered to another user" });
         }
 
+        if (await Database.GetBuyerFromUsername(Username)) {
+            return reply.status(400).send({ error: "This username is already associated with another account" })
+        }
+
         const APIKey = crypto.randomUUID();
         try {
             await Database.AddBuyer(Email, Username, crypto.sha512(Password), APIKey);
@@ -131,6 +144,18 @@ async function routes(fastify, options) {
         } catch (er) {
             return reply.status(500).send({ error: "There was an error with creating your account" });
         }
+    });
+
+    fastify.post("/login", { schema: { body: LoginSchema }, websocket: false }, async (request, reply) => {
+        const Password = request.body.password;
+        const Username = request.body.username;
+        const Buyer = await Database.GetBuyer(Username, crypto.sha512(Password));
+
+        if (!Buyer) {
+            return reply.status(401).send({ error: "Incorrect username or password" });
+        }
+
+        reply.send(Buyer);
     });
 
     fastify.get("/valid_api_key", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, (request, reply) => reply.send({ success: true }));
