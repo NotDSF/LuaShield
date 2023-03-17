@@ -53,6 +53,7 @@ async function routes(fastify, options) {
     const MakeScriptSchema = {
         type: "object",
         properties: {
+            script_id: { type: "string" },
             script_name: { type: "string", maxLength: 20, minLength: 3 },
             script: { type: "string" },
             success_webhook: { type: "string", maxLength: 150, minLength: 50 },
@@ -68,7 +69,7 @@ async function routes(fastify, options) {
                 required: ["synapse_x", "script_ware", "synapse_v3"]
             }
         },
-        required: ["script_name", "script", "success_webhook", "blacklist_webhook", "unauthorized_webhook", "allowed_exploits"]
+        required: ["script_name", "script", "success_webhook", "blacklist_webhook", "unauthorized_webhook", "allowed_exploits", "script_id"]
     }
 
     const WhiteistUserSchema = {
@@ -77,9 +78,19 @@ async function routes(fastify, options) {
             script_id: { type: "string" },
             identifier: { type: "string", maxLength: 20, minLength: 5 },
             expire: { type: "string" },
-            usage: { type: "number", minimum: 0 }
+            usage: { type: "number", minimum: 0 },
+            whitelist: { type: "boolean" }
         },
-        required: ["script_id", "identifier"]
+        required: ["script_id", "identifier", "whitelist"]
+    }
+
+    const UpdateUserSchema = {
+        type: "object",
+        properties: {
+            script_id: { type: "string" },
+            identifier: { type: "string" },
+            whitelist: { type: "boolean" }
+        }
     }
     
     const SignupSchema = {
@@ -118,13 +129,6 @@ async function routes(fastify, options) {
                 },
                 required: ["synapse_x", "script_ware", "synapse_v3"]
             }
-        }
-    }
-
-    const ScriptIDParamSchema = {
-        type: "object",
-        properties: {
-            id: { type: "string" }
         }
     }
 
@@ -262,8 +266,8 @@ async function routes(fastify, options) {
         }
     });
     
-    fastify.post("/:id/update", { schema: { headers: HeadersSchema, body: UpdateScriptSchema, params: ScriptIDParamSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
-        const ScriptID = request.params.id;
+    fastify.post("/update_script", { schema: { headers: HeadersSchema, body: UpdateScriptSchema, params: ScriptIDParamSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ScriptID = request.body.script_id;
         let Script = request.body.script;
 
         // values which could exist or not
@@ -371,11 +375,12 @@ async function routes(fastify, options) {
         }
     });
     
-    fastify.post("/whitelist_user", { schema: { headers: HeadersSchema, body: WhiteistUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.post("/add_user", { schema: { headers: HeadersSchema, body: WhiteistUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
         const Identifier = request.body.identifier;
         const Expiry = request.body.expire;
         const Usage = request.body.usage || 0;
+        const Whitelisted = request.body.whitelist;
 
         if (Expiry && new Date(Expiry).toString() == "Invalid Date" || Date.now() > Expiry) {
             return reply.stauts(400).send({ error: "Expire must be a valid unix epoch timestamp" });
@@ -392,7 +397,7 @@ async function routes(fastify, options) {
 
         const Key = crypto.randomUUID();
         try {
-            await Database.WhitelistUser(Identifier, crypto.sha512(Key), ScriptID, Expiry, Usage);
+            await Database.AddUser(Identifier, crypto.sha512(Key), ScriptID, Expiry, Usage, Whitelisted);
         } catch (er) {
             console.log(er);
             return reply.status(500).send({ error: "There was an issue creating this user" });

@@ -196,7 +196,7 @@ module.exports = class Database {
         });
     }
 
-    async WhitelistUser(Identifier, HashedKey, ScriptID, Expiry, Usage) {
+    async AddUser(Identifier, HashedKey, ScriptID, Expiry, Usage, Whitelisted) {
         return new Promise(async (resolve, reject) => {
             try {
                 const CreateUser = prisma.user.create({
@@ -205,7 +205,8 @@ module.exports = class Database {
                         Identifier: Identifier,
                         ScriptID: ScriptID,
                         ExpireAt: Expiry,
-                        MaxExecutions: Usage
+                        MaxExecutions: Usage,
+                        Whitelisted: Whitelisted
                     }
                 });
 
