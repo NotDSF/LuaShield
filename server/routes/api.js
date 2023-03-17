@@ -77,11 +77,11 @@ async function routes(fastify, options) {
         properties: {
             script_id: { type: "string" },
             identifier: { type: "string", maxLength: 20, minLength: 5 },
-            expire: { type: "string" },
+            expire: { type: "number" },
             usage: { type: "number", minimum: 0 },
-            whitelist: { type: "boolean" }
+            whitelisted: { type: "boolean" }
         },
-        required: ["script_id", "identifier", "whitelist"]
+        required: ["script_id", "identifier", "whitelisted"]
     }
 
     const UpdateUserSchema = {
@@ -89,8 +89,20 @@ async function routes(fastify, options) {
         properties: {
             script_id: { type: "string" },
             identifier: { type: "string" },
-            whitelist: { type: "boolean" }
-        }
+            whitelisted: { type: "boolean" },
+            expire: { type: "number" },
+            usage: { type: "number", minimum: 0 }
+        },
+        required: ["whitelisted", "script_id", "identifier"]
+    }
+
+    const DeleteUserSchema = {
+        type: "object",
+        properties: {
+            script_id: { type: "string" },
+            identifier: { type: "string" }
+        },
+        required: ["script_id", "identifier"]
     }
     
     const SignupSchema = {
@@ -266,7 +278,7 @@ async function routes(fastify, options) {
         }
     });
     
-    fastify.post("/update_script", { schema: { headers: HeadersSchema, body: UpdateScriptSchema, params: ScriptIDParamSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.post("/update_script", { schema: { headers: HeadersSchema, body: UpdateScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
         let Script = request.body.script;
 
@@ -380,7 +392,7 @@ async function routes(fastify, options) {
         const Identifier = request.body.identifier;
         const Expiry = request.body.expire;
         const Usage = request.body.usage || 0;
-        const Whitelisted = request.body.whitelist;
+        const Whitelisted = request.body.whitelisted;
 
         if (Expiry && new Date(Expiry).toString() == "Invalid Date" || Date.now() > Expiry) {
             return reply.stauts(400).send({ error: "Expire must be a valid unix epoch timestamp" });
@@ -409,6 +421,60 @@ async function routes(fastify, options) {
             script_id: ScriptID
         });
     });
+
+    fastify.post("/update_user", { schema: { headers: HeadersSchema, body: UpdateUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ScriptID = request.body.script_id;
+        const Identifier = request.body.identifier;
+
+        if (!await Database.ScriptOwnedByBuyer(request.APIKey, ScriptID)) {
+            return reply.status(400).send({ error: "You don't own this script" });
+        }
+
+        const User = await Database.GetUser(Identifier, ScriptID);
+        if (!User) {
+            return reply.status(400).send({ error: "This user doesn't exist" })
+        }
+
+        const Expiry = request.body.expire;
+        const Usage = request.body.usage || User.MaxExecutions;
+        const Whitelisted = request.body.whitelisted;
+
+        if (Expiry && new Date(Expiry).toString() == "Invalid Date" || Date.now() > Expiry) {
+            return reply.status(400).send({ error: "Expire must be a valid unix epoch timestamp" });
+        }
+
+        try {
+            const Result = await Database.UpdateUser(User.id, Expiry, Usage, Whitelisted);
+            reply.send(Result);
+        } catch (er) {
+            console.log(er);
+            return reply.status(500).send({ error: "There was an issue while updating this user" })
+        }
+    });
+
+    fastify.post("/delete_user", { schema: { headers: HeadersSchema, body: DeleteUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ScriptID = request.body.script_id;
+        const Identifier = request.body.identifier;
+
+        if (!await Database.ScriptOwnedByBuyer(request.APIKey, ScriptID)) {
+            return reply.status(400).send({ error: "You don't own this script" });
+        }
+
+        const Existing = await Database.GetUser(Identifier, ScriptID);
+        if (!Existing) {
+            return reply.status(400).send({ error: "This user doesn't exist" })
+        }
+
+        try {
+            await Database.DeleteUser(Existing.id, ScriptID);
+            reply.send({ success: true });
+        } catch (er) {
+            console.log(er);
+            return reply.status(500).send({ error: "There was an issue while deleting this user" });
+        }
+    });
+
+
 }
 
 module.exports = routes;

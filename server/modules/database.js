@@ -305,5 +305,50 @@ module.exports = class Database {
             }
         });
     }
+
+    // first argument is the actual ID of the user object.
+    async UpdateUser(UserCollectionID, Expiry, Usage, Whitelisted) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.user.update({
+                    where: { id: UserCollectionID },
+                    data: {
+                        ExpireAt: Expiry,
+                        MaxExecutions: Usage,
+                        Whitelisted: Whitelisted
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        })
+    }
+
+    async DeleteUser(UserCollectionID, ScriptID) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const DeleteUser = prisma.user.delete({
+                    where: { id: UserCollectionID }
+                });
+
+                const UpdateScriptUsers = prisma.script.update({
+                    where: { id: ScriptID },
+                    data: {
+                        Users: { 
+                            increment: -1
+                        }
+                    }
+                });
+
+                const Transaction = await prisma.$transaction([DeleteUser, UpdateScriptUsers]);
+                resolve(Transaction[0]);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
 }
 
