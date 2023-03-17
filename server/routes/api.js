@@ -79,7 +79,8 @@ async function routes(fastify, options) {
             identifier: { type: "string", maxLength: 20, minLength: 5 },
             expire: { type: "number" },
             usage: { type: "number", minimum: 0 },
-            whitelisted: { type: "boolean" }
+            whitelisted: { type: "boolean" },
+            note: { type: "string", minLength: 3, maxLength: 20 }
         },
         required: ["script_id", "identifier", "whitelisted"]
     }
@@ -91,7 +92,8 @@ async function routes(fastify, options) {
             identifier: { type: "string" },
             whitelisted: { type: "boolean" },
             expire: { type: "number" },
-            usage: { type: "number", minimum: 0 }
+            usage: { type: "number", minimum: 0 },
+            note: { type: "string", minLength: 3, maxLength: 20 }
         },
         required: ["whitelisted", "script_id", "identifier"]
     }
@@ -393,6 +395,7 @@ async function routes(fastify, options) {
         const Expiry = request.body.expire;
         const Usage = request.body.usage || 0;
         const Whitelisted = request.body.whitelisted;
+        const Note = request.body.note;
 
         if (Expiry && new Date(Expiry).toString() == "Invalid Date" || Date.now() > Expiry) {
             return reply.stauts(400).send({ error: "Expire must be a valid unix epoch timestamp" });
@@ -409,7 +412,7 @@ async function routes(fastify, options) {
 
         const Key = crypto.randomUUID();
         try {
-            await Database.AddUser(Identifier, crypto.sha512(Key), ScriptID, Expiry, Usage, Whitelisted);
+            await Database.AddUser(Identifier, crypto.sha512(Key), ScriptID, Expiry, Usage, Whitelisted, Note);
         } catch (er) {
             console.log(er);
             return reply.status(500).send({ error: "There was an issue creating this user" });
@@ -438,13 +441,14 @@ async function routes(fastify, options) {
         const Expiry = request.body.expire;
         const Usage = request.body.usage || User.MaxExecutions;
         const Whitelisted = request.body.whitelisted;
+        const Note = request.body.note;
 
         if (Expiry && new Date(Expiry).toString() == "Invalid Date" || Date.now() > Expiry) {
             return reply.status(400).send({ error: "Expire must be a valid unix epoch timestamp" });
         }
 
         try {
-            const Result = await Database.UpdateUser(User.id, Expiry, Usage, Whitelisted);
+            const Result = await Database.UpdateUser(User.id, Expiry, Usage, Whitelisted, Note);
             reply.send(Result);
         } catch (er) {
             console.log(er);

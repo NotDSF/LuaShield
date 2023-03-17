@@ -23,6 +23,7 @@ model User {
   CreatedAt     DateTime @default(now())
   ExpireAt      Int?
   MaxExecutions Int      @default(0)
+  Note          String   @default("")
 }
 
 model Script {
