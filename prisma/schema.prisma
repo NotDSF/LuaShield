@@ -26,26 +26,32 @@ model User {
   Note          String   @default("")
 }
 
-model Script {
-  id                  String   @id @default(uuid()) @map("_id")
-  Executions          Int      @default(0)
-  CrackAttempts       Int      @default(0)
-  Users               Int      @default(0)
+model Project {
+  id                  String  @id @default(uuid()) @map("_id")
+  Executions          Int     @default(0)
+  CrackAttempts       Int     @default(0)
+  Users               Int     @default(0)
   Name                String
   SuccessWebhook      String
   BlacklistWebhook    String
   UnauthorizedWebhook String
   Online              Boolean
-  Version             String
-  Versions            String[] @default([])
   SynapseX            Boolean
   ScriptWare          Boolean
   SynapseV3           Boolean
 }
 
+model Script {
+  id        String   @id @default(uuid()) @map("_id")
+  Name      String
+  ProjectId String
+  Version   String
+  Versions  String[] @default([])
+}
+
 model Buyer {
   id            String   @id @default(uuid()) @map("_id")
-  OwnedScripts  String[] @default([])
+  Projects      String[] @default([])
   Email         String   @unique
   Password      String   @unique
   APIKey        String   @unique

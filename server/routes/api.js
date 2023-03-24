@@ -50,12 +50,10 @@ async function routes(fastify, options) {
         required: ["luashield-api-key"]
     }
 
-    const MakeScriptSchema = {
+    const MakeProjectSchem = {
         type: "object",
         properties: {
-            script_id: { type: "string" },
-            script_name: { type: "string", maxLength: 20, minLength: 3 },
-            script: { type: "string" },
+            name: { type: "string", maxLength: 20, minLength: 3 },
             success_webhook: { type: "string", maxLength: 150, minLength: 50 },
             blacklist_webhook: { type: "string", maxLength: 150, minLength: 50 },
             unauthorized_webhook: { type: "string", maxLength: 150, minLength: 50 },
@@ -69,7 +67,7 @@ async function routes(fastify, options) {
                 required: ["synapse_x", "script_ware", "synapse_v3"]
             }
         },
-        required: ["script_name", "script", "success_webhook", "blacklist_webhook", "unauthorized_webhook", "allowed_exploits", "script_id"]
+        required: ["name", "success_webhook", "blacklist_webhook", "unauthorized_webhook", "allowed_exploits"]
     }
 
     const WhiteistUserSchema = {
@@ -146,6 +144,36 @@ async function routes(fastify, options) {
         }
     }
 
+    const MakeProjectSchema = {
+        type: "object",
+        properties: {
+            name: { type: "string", maxLength: 20, minLength: 3 },
+            success_webhook: { type: "string", maxLength: 150, minLength: 50 },
+            blacklist_webhook: { type: "string", maxLength: 150, minLength: 50 },
+            unauthorized_webhook: { type: "string", maxLength: 150, minLength: 50 },
+            allowed_exploits: { 
+                type: "object",
+                properties: {
+                    synapse_x: { type: "boolean" },
+                    script_ware: { type: "boolean" },
+                    synapse_v3: { type: "boolean" }
+                },
+                required: ["synapse_x", "script_ware", "synapse_v3"]
+            }
+        },
+        required: ["name", "success_webhook", "blacklist_webhook", "unauthorized_webhook", "allowed_exploits"]
+    }
+
+    const AddScriptSchema = {
+        type: "object",
+        properties: {
+            name: { type: "string", maxLength: 15, maxLength: 3 },
+            script: { type: "string" }, // base 64 encoded,
+            project_id: { type: "string" }
+        },
+        required: ["name", "script", "project_id"]
+    }
+
     fastify.get("/status", { websocket: false }, (request, reply) => reply.send({ online: true }))
 
     fastify.post("/signup", { schema: { body: SignupSchema }, websocket: false }, async (request, reply) => {
@@ -192,11 +220,10 @@ async function routes(fastify, options) {
 
     fastify.get("/valid_api_key", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, (request, reply) => reply.send({ success: true }));
 
-    fastify.post("/make_script", { schema: { headers: HeadersSchema, body: MakeScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
-        const Name = request.body.script_name;
+    fastify.post("/make_project", { schema: { headers: HeadersSchema, body: MakeProjectSchem }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const Name = request.body.name;
         const Exploits = request.body.allowed_exploits;
 
-        let Script = request.body.script;
         let SuccessWebhook = request.body.success_webhook;
         let BlacklistWebhook = request.body.blacklist_webhook;
         let UnauthorizedWebhook = request.body.unauthorized_webhook;
@@ -229,6 +256,32 @@ async function routes(fastify, options) {
             return reply.status(500).send({ error: er.toString() });
         }
 
+        let Information;
+        try {
+            Information = await Database.MakeProject(Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, Exploits);
+            await Database.UpdateBuyerProjects(request.APIKey, Information.id);
+        } catch (er) {
+            return reply.status(500).send({ error: "There was an issue while creating this project" });
+        }
+        
+        mkdirSync(path.join(__dirname, `../../projects/${Information.id}`)); // make folder in projects for project
+        reply.send(Information);
+    });
+    
+    fastify.post("/add_script", { schema: { headers: HeadersSchema, body: AddScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ScriptName = request.body.name;
+        const ProjectID = request.body.project_id;
+        let Script = request.body.script;
+
+        if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
+            return reply.status(400).send({ error: "This project isn't owned by you" })
+        }
+
+        let Project = await Database.GetProject(ProjectID);
+        if (!Project) {
+            return reply.status(400).send({ error: "This project doesn't exist" });
+        }
+
         Script = Buffer.from(Script, "base64").toString();
         try {
             Script = await macros(Script, true);
@@ -237,15 +290,13 @@ async function routes(fastify, options) {
         }
 
         const GeneratedVersion = `v${crypto.randomUUID().substr(0, 5)}`;
-        let ScriptInfo;
+        let Info;
         try {
-            ScriptInfo = await Database.MakeScript(Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, GeneratedVersion, Exploits);
-        } catch (er) {
+            Info = await Database.MakeScript(ProjectID, ScriptName, GeneratedVersion);
+        } catch (er) {   
+            console.log(er);
             return reply.status(500).send({ error: "There was an issue while creating this script" });
         }
-        
-        const ScriptID = ScriptInfo.id;
-        await Database.UpdateBuyerScripts(request.APIKey, ScriptID);
 
         let Whitelist = readFileSync(path.join(__dirname, "../../client/client.lua"), "utf-8")
             .replace(Regex("ws://localhost:8880", "wss://luashield.com"))
@@ -256,7 +307,7 @@ async function routes(fastify, options) {
         try {
             Whitelist = await macros(Whitelist);
 
-            const { jobId } = await luraph.createNewJob("main", Whitelist, `${ScriptID}.lua`, {
+            const { jobId } = await luraph.createNewJob("main", Whitelist, `${Info.id}.lua`, {
                 INTENSE_VM_STRUCTURE: true,
                 TARGET_VERSION: "Luau Handicapped",
                 VM_ENCRYPTION: true,
@@ -271,15 +322,16 @@ async function routes(fastify, options) {
             }
 
             const { data } = await luraph.downloadResult(jobId);
-            mkdirSync(path.join(__dirname, `../scripts/${ScriptID}`));
-            writeFileSync(path.join(__dirname, `../scripts/${ScriptID}/${GeneratedVersion}.lua`), data);
-            
-            reply.send({ script_id: ScriptID, version: GeneratedVersion });
+
+            mkdirSync(path.join(__dirname, `../projects/${ProjectID}/${Info.id}`));
+            writeFileSync(path.join(__dirname, `../projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), data);
+            reply.send(Info);
         } catch (er) {
             return reply.status(500).send({ error: er.toString() });
         }
     });
-    
+
+    /*
     fastify.post("/update_script", { schema: { headers: HeadersSchema, body: UpdateScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
         let Script = request.body.script;
@@ -477,6 +529,7 @@ async function routes(fastify, options) {
             return reply.status(500).send({ error: "There was an issue while deleting this user" });
         }
     });
+    */
 
 
 }

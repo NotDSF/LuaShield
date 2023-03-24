@@ -30,11 +30,11 @@ module.exports = class Database {
         });
     }
 
-    async GetScript(ScriptID) {
+    async GetProject(ProjectID) {
         return new Promise(async (resolve, reject) => {
             try {
-                const Script = await prisma.script.findUnique({ where: { id: ScriptID } });
-                resolve(Script);
+                const Project = await prisma.project.findUnique({ where: { id: ProjectID } });
+                resolve(Project);
             } catch (er) {
                 console.log(er);
                 reject();
@@ -128,18 +128,16 @@ module.exports = class Database {
         });
     }
 
-    async MakeScript(Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, Version, Exploits) {
+    async MakeProject(Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, Exploits) {
         return new Promise(async (resolve, reject) => {
             try {
-                const Result = await prisma.script.create({
+                const Result = prisma.project.create({
                     data: {
                         Name: Name,
                         SuccessWebhook: SuccessWebhook,
                         BlacklistWebhook: BlacklistWebhook,
                         UnauthorizedWebhook: UnauthorizedWebhook,
                         Online: true,
-                        Version: Version,
-                        Versions: [Version],
                         SynapseX: Exploits.synapse_x,
                         ScriptWare: Exploits.script_ware,
                         SynapseV3: Exploits.synapse_v3
@@ -153,14 +151,14 @@ module.exports = class Database {
         });
     }
 
-    async UpdateBuyerScripts(APIKey, ScriptID) {
+    async UpdateBuyerProjects(APIKey, ProjectID) {
         return new Promise(async (resolve, reject) => {
             try {
                 const Result = await prisma.buyer.update({
                     where: { APIKey: APIKey },
                     data: {
-                        OwnedScripts: {
-                            push: ScriptID
+                        Projects: {
+                            push: ProjectID
                         }
                     }
                 });
@@ -172,11 +170,11 @@ module.exports = class Database {
         })        
     }
 
-    async ScriptOwnedByBuyer(APIKey, ScriptID) {
+    async ProjectOwnedByBuyer(APIKey, ProjectID) {
         return new Promise(async (resolve, reject) => {
             try {
                 const Result = await prisma.buyer.findUnique({ where: { APIKey: APIKey  } });
-                resolve(Result.OwnedScripts.find(script => script === ScriptID));
+                resolve(Result.Projects.find(script => script === ProjectID));
             } catch (er) {
                 console.log(er);
                 reject();
@@ -351,6 +349,71 @@ module.exports = class Database {
                 reject();
             }
         });
+    }
+
+    async MakeScript(ProjectID, Name, Version) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = prisma.script.create({
+                    data: {
+                        ProjectID: ProjectID,
+                        Name: Name,
+                        Version: Version,
+                        Versions: [Version]
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
+
+    async Test(Name, SuccessWebhook, B) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.project.create({
+                    data: {
+                        Name: "dsf",
+                        SuccessWebhook: "SuccessWebhook",
+                        BlacklistWebhook: "BlacklistWebhook",
+                        UnauthorizedWebhook: "UnauthorizedWebhook",
+                        Online: true,
+                        Version: "v1",
+                        Versions: ["v3"],
+                        SynapseX: true,
+                        ScriptWare: false,
+                        SynapseV3: true
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
+
+    async Balls() {
+        return new Promise(async (resolve, reject) => {
+            const Result = await prisma.script.create({
+                data: {
+                    Name: "test",
+                    ProjectId: "345f12f2-14a0-4ca9-8a2a-53a29e766afb"
+                }
+            });
+            resolve(Result)
+        })
+    }
+
+    async GetProject() {
+        return new Promise(async (resolve, reject) => {
+            const Result = await prisma.project.findFirst({
+                where: { id: "345f12f2-14a0-4ca9-8a2a-53a29e766afb" }
+            });
+            resolve(Result);
+        })
     }
 }
 

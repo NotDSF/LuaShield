@@ -1,5 +1,5 @@
 const crypto = require("./crypto");
-const config = require("./../config.json");
+const config = require("../config.json");
 const utf8 = require("utf8");
 
 // stolen from stackoverflow cause im lazy :scream:
