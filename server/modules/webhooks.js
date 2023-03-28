@@ -158,7 +158,7 @@ async function SetupWebhook(webhook, name, type) {
                 body: JSON.stringify({
                     username: "LuaShield",
                     avatar_url: "https://i.imgur.com/6xyJbAg.png",
-                    content: `This channel is now being used for LuaShield **${type}** alerts, script: \`${name}\``
+                    content: `This channel is now being used for LuaShield **${type}** alerts, project: \`${name}\``
                 })
             });
 

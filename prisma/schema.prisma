@@ -15,7 +15,7 @@ model User {
   Key           String   @unique
   Identifier    String   @unique
   HWID          String?  @unique
-  ScriptID      String   @unique
+  ProjectID     String   @unique
   Executions    Int      @default(0)
   CrackAttempts Int      @default(0)
   Exploit       String?
@@ -44,7 +44,7 @@ model Project {
 model Script {
   id        String   @id @default(uuid()) @map("_id")
   Name      String
-  ProjectId String
+  ProjectID String
   Version   String
   Versions  String[] @default([])
 }
@@ -55,7 +55,7 @@ model Buyer {
   Email         String   @unique
   Password      String   @unique
   APIKey        String   @unique
-  Username      String
+  Username      String   @unique
   Subscription  String?
   CustomerID    String?
   BypassPayment Boolean?

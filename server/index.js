@@ -30,6 +30,7 @@ fastify.register(require("@fastify/websocket"), {
 });
 
 fastify.register(require("./routes/websocket"));
+fastify.register(require("./routes/script"), { prefix: "/s" });
 
 (async () => {
     try {

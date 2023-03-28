@@ -99,7 +99,7 @@ async function routes(fastify, options) {
 		const Fingerprint = request.headers[config.headers.fingerprint];
 		const NumberID = request.headers[config.headers.numberid];
 		const ServerID = request.headers[config.headers.serverid];
-		const ScriptID = request.headers["script"];
+		const ProjectID = request.headers["script"];
 		const RecievedWS = request.headers[config.headers.websocketid];
 		let Duration = request.headers[config.headers.duration];
 		const UserID = request.UserID;
@@ -110,44 +110,44 @@ async function routes(fastify, options) {
 		const WebsocketKey = Connected.get(request.ip === "::1" ? "127.0.0.1" : request.ip);
 
 		// check if all values were inputted
-		if (!Fingerprint || !NumberID || !ServerID || !UserID || !HWID || !Key || !WebsocketKey || !Duration || !RequestHash || !ScriptID || !RecievedWS) {
-			return reply.status(502);
+		if (!Fingerprint || !NumberID || !ServerID || !UserID || !HWID || !Key || !WebsocketKey || !Duration || !RequestHash || !ProjectID || !RecievedWS) {
+			return reply.status(502)
 		}
 
 		Duration = parseFloat(Duration);
 
 		// check if serverid is correct and duration is a valid int
 		if (ServerID !== config.serverid || !Duration || Duration > 99) {
-			return reply.status(502);
+			return reply.status(502)
 		}
 
 		const Whitelist = await Database.GetWhitelist(crypto.sha512(Key));
-		const Script = await Database.GetScript(ScriptID);
+		const Project = await Database.GetProject(ProjectID);
 		const Flag = flag.getFlag(Fingerprint, NumberID);
 
-		if (!Script || !Script.Online) {
-			return reply.status(502);
+		if (!Project || !Project.Online) {
+			return reply.status(502)
 		}
 
-		if (!Script.SynapseX && request.Exploit === "Synapse X" || !Script.ScriptWare && request.Exploit === "Script Ware" || !Script.SynapseV3 && request.Exploit === "Synapse V3") {
-			await webhooks.Unauthorized(Script.UnauthorizedWebhook, {
+		if (!Project.SynapseX && request.Exploit === "Synapse X" || !Project.ScriptWare && request.Exploit === "Script Ware" || !Project.SynapseV3 && request.Exploit === "Synapse V3") {
+			await webhooks.Unauthorized(Project.UnauthorizedWebhook, {
 				IP: request.ip,
 				Reason: `This user tried running this script on a disallowed exploit (${request.Exploit}), identifier: ${Whitelist.Identifier}`
 			});
-			return reply.status(502);
+			return reply.status(502)
 		}
 
 		if (Whitelist) {
 			if (!Whitelist.Whitelisted) {
-				return reply.status(502);
+				return reply.status(502)
 			}
 
-			if (Whitelist.ScriptID !== ScriptID) {
-				return reply.status(502);
+			if (Whitelist.ProjectID !== ProjectID) {
+				return reply.status(502)
 			}
 
 			if (Whitelist.HWID && HWID !== Whitelist.HWID) {
-				return reply.status(502);
+				return reply.status(502)
 			}
 
 			if (!Whitelist.HWID) {
@@ -156,7 +156,7 @@ async function routes(fastify, options) {
 					Whitelist.HWID = HWID;
 				} catch (er) {
 					console.log(er);
-					return reply.status(502);
+					return reply.status(502)
 				}
 			}
 
@@ -166,30 +166,30 @@ async function routes(fastify, options) {
 					Whitelist.Exploit = request.Exploit;
 				} catch (er) {
 					console.log(er);
-					return reply.status(502);
+					return reply.status(502)
 				}
 			}
 
 			if (Whitelist.ExpireAt && Date.now() <= Whitelist.ExpireAt) {
-				await webhooks.Unauthorized(Script.UnauthorizedWebhook, {
+				await webhooks.Unauthorized(Project.UnauthorizedWebhook, {
 					IP: request.ip,
 					Reason: `This user's whitelist has expired, identifier: \`${Whitelist.Identifier}\``
 				});
-				return reply.status(502);
+				return reply.status(502)
 			}
 
 			if (Whitelist.MaxExecutions !== 0 && Whitelit.Executions >= Whitelist.MaxExecutions) {
-				await webhooks.Unauthorized(Script.UnauthorizedWebhook, {
+				await webhooks.Unauthorized(Project.UnauthorizedWebhook, {
 					IP: request.ip,
 					Reason: `This user has reached their maximum amount of executions (${Whitelist.MaxExecutions}), identifier: \`${Whitelist.Identifier}\``
 				});
-				return reply.status(502);
+				return reply.status(502)
 			}
 		}
 
 		if (WebsocketKey !== RecievedWS || !Flag) {
 			if (Whitelist) {
-				await webhooks.Blacklist(Script.BlacklistWebhook, {
+				await webhooks.Blacklist(Project.BlacklistWebhook, {
 					IP: request.ip,
 					Flag: `${Fingerprint} ${NumberID}`,
 					WebsocketID: RecievedWS,
@@ -198,7 +198,7 @@ async function routes(fastify, options) {
 				});
 
 				try {
-					await Database.IncrementUserCracks(Whitelist, ScriptID);
+					await Database.IncrementUserCracks(Whitelist, ProjectID);
 				} catch (er) {
 					console.log(er);
 				}
@@ -208,7 +208,7 @@ async function routes(fastify, options) {
 		}
 		
 		if (!Whitelist) {
-			await webhooks.Unauthorized(Script.UnauthorizedWebhook, {
+			await webhooks.Unauthorized(Project.UnauthorizedWebhook, {
 				IP: request.ip,
 				Reason: "User tried to run script without a whitelist"
 			});
@@ -220,7 +220,7 @@ async function routes(fastify, options) {
 		WhitelistJSXToken.set(request.ip, {
 			Timestamp: Date.now() / 1000,
 			Token: JSXToken,
-			ScriptID: ScriptID
+			ProjectID: ProjectID
 		});
 
 		reply.send(EncodeJSON({
@@ -231,11 +231,11 @@ async function routes(fastify, options) {
 				config.scriptid,
 				Flag.reqId,
 				crypto.hashstr(WebsocketKey),
-				crypto.hashstr(ScriptID),
+				crypto.hashstr(ProjectID),
 				RequestHash,
 				JSXToken,
-				Script.Name,
-				Script.Version,
+				Project.Name,
+				"",
 				Whitelist.Exploit,
 				Whitelist.Executions,
 				Whitelist.CrackAttempts,
@@ -244,12 +244,12 @@ async function routes(fastify, options) {
 		}, request.HWID));
 
 		try {
-			await Database.IncrememntUserExecutions(Whitelist, ScriptID);
+			await Database.IncrememntUserExecutions(Whitelist, ProjectID);
 		} catch (er) {
 			console.log(er);
 		}
 
-		webhooks.Success(Script.SuccessWebhook, {
+		webhooks.Success(Project.SuccessWebhook, {
 			IP: request.ip,
 			UserAgent: request.headers["user-agent"],
 			Whitelist: Whitelist,
@@ -272,8 +272,8 @@ async function routes(fastify, options) {
 			return reply.status(400);
 		}
 
-		const Script = await Database.GetScript(Data.ScriptID);
-		if (!Script || !Script.Online) {
+		const Project = await Database.GetProject(Data.ProjectID);
+		if (!Project || !Project.Online) {
 			return reply.status(400);
 		}
 

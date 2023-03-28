@@ -9,12 +9,8 @@ local function LPH_JIT(...) return ... end;
 local function LS_NUMENC(...) return ... end;
 
 local TimeNow = tick();
-local ScriptID = LPH_ENCSTR("SCRIPT_ID");
+local ProjectID = LPH_ENCSTR("PROJECT_ID");
 local LuaShield = 1;
-local LS = {};
-
-
-
 
 if getgenv().LuaShield then return end; -- Stops retards executing twice
 getgenv().LuaShield = true;
@@ -181,7 +177,7 @@ local IDENTIFIERS = {
 local CURRENT_EXPLOIT = syn and syn.oth and IDENTIFIERS.SYNAPSEV3 or syn and IDENTIFIERS.SYNAPSE or not syn and IDENTIFIERS.SCRIPTWARE;
 
 local function CrashLog(msg) 
-  local Name = string.format("LuaShield/crash-%s-%d.txt", ScriptID, math.random(1, 9999)); 
+  local Name = string.format("LuaShield/crash-%s-%d.txt", ProjectID, math.random(1, 9999)); 
   writefile(Name, msg);
 end;
 
@@ -628,7 +624,7 @@ LS_OPCODESPAM("CONCAT")
 
 -- A lot smarter to unpack strings after checks have occured! (will be using ce so 'unpack' applies)
 
-local ScriptId = LPH_ENCSTR("EknsQsbbtQzKOFKyepMlewERNRarAbiFoasAyiLCZXKDzDatOBHVJcbZzEVKsOGMBhAZfPohhFQopdQctiiEvmTmUNgRtcQUdMSl");
+local ScriptID = LPH_ENCSTR("EknsQsbbtQzKOFKyepMlewERNRarAbiFoasAyiLCZXKDzDatOBHVJcbZzEVKsOGMBhAZfPohhFQopdQctiiEvmTmUNgRtcQUdMSl");
 local ServerId = LPH_ENCSTR("rsficmcZCjNyIWdpGrjVgzoNBzVakkuFGmhEjapUGvgzhkIbWyujViPlBjKjFctWmKCsSTWDhuarpRECpJefGyZfcixbyEfhVGIz");
 local WebsocketId = LPH_ENCSTR("PibNiKCVCHuabRUvUfFqlcJMizJpuyOUJqeubRKduLWNQOCDjILzOwYpHXrMQSVlPLjRjgGuJVgRassCBcHtVcxYWwrsdLLxPJde");
 local StackReplay = tick();
@@ -676,7 +672,7 @@ local Response = LS_REQUEST({
     -- Fake Values (not needed)
     ["wkbzjadjkz"] = fakeSet, -- Fake NumberId
     ["slcrdmqaaf"] = RandomWord(10), -- fake fingerprint
-    ["script"] = ScriptID
+    ["script"] = ProjectID
   }
 });
 
@@ -703,7 +699,7 @@ for _, v in pairs(JSONResponse) do
     local recievedReqId = v["3"];
     --local recievedCPUArc = v[6];
     local recievedWebsocketKey = v["4"];
-    local recievedScriptID = v["5"];
+    local recievedProjectID = v["5"];
     local recievedRequestHash = v["6"];
     local recievedJSXToken = v["7"];
     local antiJMP = "";
@@ -721,14 +717,14 @@ for _, v in pairs(JSONResponse) do
         JMPCounter = JMPCounter + 1;
         if EQ(recievedFingerprint, Fingerprint) then
           JMPCounter = JMPCounter + 1;
-          if EQ(recievedId, ScriptId) then
+          if EQ(recievedId, ScriptID) then
             JMPCounter = JMPCounter + 1;
             --if EQ(recievedFemIdentity, femmboyhubIdentity) then
             if EQ(recievedReqId, reqId) then
               JMPCounter = JMPCounter + 1;
               --if EQ(recievedCPUArc, CPU_Architecture) then
               if EQ(recievedWebsocketKey, HashString(WebsocketKey)) then
-                if EQ(recievedScriptID, HashString(ScriptID)) then
+                if EQ(recievedProjectID, HashString(ProjectID)) then
                   JMPCounter = JMPCounter + 1;
                   exploitenv.LuaShield = false;
                 
@@ -839,7 +835,7 @@ for _, v in pairs(JSONResponse) do
                       decodeString = nil;
                       LS_OPCODESPAM("CALL")
                       HashString = nil;
-                      ScriptId = nil;
+                      ScriptID = nil;
                       ServerId = nil;
                       WebsocketId = nil;
                       WLMessage = nil;
@@ -848,7 +844,7 @@ for _, v in pairs(JSONResponse) do
                       recievedId = nil;
                       recievedReqId = nil;
                       recievedWebsocketKey = nil;
-                      recievedScriptID = nil;
+                      recievedProjectID = nil;
                       recievedRequestHash = nil;
                     end;
 

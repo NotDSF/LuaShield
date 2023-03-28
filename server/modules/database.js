@@ -75,7 +75,7 @@ module.exports = class Database {
     async IncrememntUserExecutions(Whitelist, ScriptID) {
         return new Promise(async (resolve, reject) => {
             try {
-                const UpdateScriptExecutions = prisma.script.update({
+                const UpdateScriptExecutions = prisma.project.update({
                     where: { id: ScriptID },
                     data: { Executions: { increment: 1 } }
                 });
@@ -97,7 +97,7 @@ module.exports = class Database {
     async IncrementUserCracks(Whitelist, ScriptID) {
         return new Promise(async (resolve, reject) => {
             try {
-                const UpdateScriptExecutions = prisma.script.update({
+                const UpdateScriptExecutions = prisma.project.update({
                     where: { id: ScriptID },
                     data: { CrackAttempts: { increment: 1 } }
                 });
@@ -182,10 +182,10 @@ module.exports = class Database {
         });
     }
 
-    async GetUser(Identifier, ScriptID) {
+    async GetUser(Identifier, ProjectID) {
         return new Promise(async (resolve, reject) => {
             try {
-                const Result = await prisma.user.findFirst({ where: { Identifier: Identifier, ScriptID: ScriptID } });
+                const Result = await prisma.user.findFirst({ where: { Identifier: Identifier, ProjectID: ProjectID } });
                 resolve(Result)
             } catch (er) {
                 console.log(er);
@@ -194,14 +194,14 @@ module.exports = class Database {
         });
     }
 
-    async AddUser(Identifier, HashedKey, ScriptID, Expiry, Usage, Whitelisted, Note) {
+    async AddUser(Identifier, HashedKey, ProjectID, Expiry, Usage, Whitelisted, Note) {
         return new Promise(async (resolve, reject) => {
             try {
                 const CreateUser = prisma.user.create({
                     data: {
                         Key: HashedKey,
                         Identifier: Identifier,
-                        ScriptID: ScriptID,
+                        ProjectID: ProjectID,
                         ExpireAt: Expiry,
                         MaxExecutions: Usage,
                         Whitelisted: Whitelisted,
@@ -209,8 +209,8 @@ module.exports = class Database {
                     }
                 });
 
-                const UpdateUsers = prisma.script.update({
-                    where: { id: ScriptID },
+                const UpdateUsers = prisma.project.update({
+                    where: { id: ProjectID },
                     data: { Users: { increment: 1 } }
                 });
 
@@ -370,50 +370,16 @@ module.exports = class Database {
         });
     }
 
-    async Test(Name, SuccessWebhook, B) {
+    async GetScript(ProjectID, ScriptID) {
         return new Promise(async (resolve, reject) => {
             try {
-                const Result = await prisma.project.create({
-                    data: {
-                        Name: "dsf",
-                        SuccessWebhook: "SuccessWebhook",
-                        BlacklistWebhook: "BlacklistWebhook",
-                        UnauthorizedWebhook: "UnauthorizedWebhook",
-                        Online: true,
-                        Version: "v1",
-                        Versions: ["v3"],
-                        SynapseX: true,
-                        ScriptWare: false,
-                        SynapseV3: true
-                    }
-                });
+                const Result = prisma.script.findFirst({ where: { id: ScriptID, ProjectID: ProjectID } });
                 resolve(Result);
             } catch (er) {
                 console.log(er);
                 reject();
             }
         });
-    }
-
-    async Balls() {
-        return new Promise(async (resolve, reject) => {
-            const Result = await prisma.script.create({
-                data: {
-                    Name: "test",
-                    ProjectId: "345f12f2-14a0-4ca9-8a2a-53a29e766afb"
-                }
-            });
-            resolve(Result)
-        })
-    }
-
-    async GetProject() {
-        return new Promise(async (resolve, reject) => {
-            const Result = await prisma.project.findFirst({
-                where: { id: "345f12f2-14a0-4ca9-8a2a-53a29e766afb" }
-            });
-            resolve(Result);
-        })
     }
 }
 

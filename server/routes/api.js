@@ -73,14 +73,14 @@ async function routes(fastify, options) {
     const WhiteistUserSchema = {
         type: "object",
         properties: {
-            script_id: { type: "string" },
+            project_id: { type: "string" },
             identifier: { type: "string", maxLength: 20, minLength: 5 },
             expire: { type: "number" },
             usage: { type: "number", minimum: 0 },
             whitelisted: { type: "boolean" },
             note: { type: "string", minLength: 3, maxLength: 20 }
         },
-        required: ["script_id", "identifier", "whitelisted"]
+        required: ["project_id", "identifier", "whitelisted"]
     }
 
     const UpdateUserSchema = {
@@ -144,30 +144,10 @@ async function routes(fastify, options) {
         }
     }
 
-    const MakeProjectSchema = {
-        type: "object",
-        properties: {
-            name: { type: "string", maxLength: 20, minLength: 3 },
-            success_webhook: { type: "string", maxLength: 150, minLength: 50 },
-            blacklist_webhook: { type: "string", maxLength: 150, minLength: 50 },
-            unauthorized_webhook: { type: "string", maxLength: 150, minLength: 50 },
-            allowed_exploits: { 
-                type: "object",
-                properties: {
-                    synapse_x: { type: "boolean" },
-                    script_ware: { type: "boolean" },
-                    synapse_v3: { type: "boolean" }
-                },
-                required: ["synapse_x", "script_ware", "synapse_v3"]
-            }
-        },
-        required: ["name", "success_webhook", "blacklist_webhook", "unauthorized_webhook", "allowed_exploits"]
-    }
-
     const AddScriptSchema = {
         type: "object",
         properties: {
-            name: { type: "string", maxLength: 15, maxLength: 3 },
+            name: { type: "string", maxLength: 20, minLength: 3 },
             script: { type: "string" }, // base 64 encoded,
             project_id: { type: "string" }
         },
@@ -267,6 +247,11 @@ async function routes(fastify, options) {
         mkdirSync(path.join(__dirname, `../../projects/${Information.id}`)); // make folder in projects for project
         reply.send(Information);
     });
+
+    fastify.get("/test", { websocket: false }, async (request, reply) => {
+        console.log("a");
+        reply.raw.writeHead(502)
+    })
     
     fastify.post("/add_script", { schema: { headers: HeadersSchema, body: AddScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptName = request.body.name;
@@ -301,12 +286,13 @@ async function routes(fastify, options) {
         let Whitelist = readFileSync(path.join(__dirname, "../../client/client.lua"), "utf-8")
             .replace(Regex("ws://localhost:8880", "wss://luashield.com"))
             .replace("local function LPH_CRASH() error(\"Blocked crash\"); end;", "")
-            .replace("SCRIPT_ID", ScriptID)
+            .replace("PROJECT_ID", ProjectID)
             .replace("--_SCRIPT_--", Script);
 
         try {
             Whitelist = await macros(Whitelist);
 
+            /*
             const { jobId } = await luraph.createNewJob("main", Whitelist, `${Info.id}.lua`, {
                 INTENSE_VM_STRUCTURE: true,
                 TARGET_VERSION: "Luau Handicapped",
@@ -322,13 +308,49 @@ async function routes(fastify, options) {
             }
 
             const { data } = await luraph.downloadResult(jobId);
+            */
 
-            mkdirSync(path.join(__dirname, `../projects/${ProjectID}/${Info.id}`));
-            writeFileSync(path.join(__dirname, `../projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), data);
+            mkdirSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}`));
+            writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), Whitelist);
             reply.send(Info);
         } catch (er) {
             return reply.status(500).send({ error: er.toString() });
         }
+    });
+
+    fastify.post("/add_user", { schema: { headers: HeadersSchema, body: WhiteistUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ProjectID = request.body.project_id;
+        const Identifier = request.body.identifier;
+        const Expiry = request.body.expire;
+        const Usage = request.body.usage || 0;
+        const Whitelisted = request.body.whitelisted;
+        const Note = request.body.note;
+
+        if (Expiry && new Date(Expiry).toString() == "Invalid Date" || Date.now() > Expiry) {
+            return reply.stauts(400).send({ error: "Expire must be a valid unix epoch timestamp" });
+        }
+
+        if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
+            return reply.status(400).send({ error: "You don't own this project" });
+        }
+
+        const Existing = await Database.GetUser(Identifier, ProjectID);
+        if (Existing) {
+            return reply.status(400).send({ error: "A user with this identifier already exists" })
+        }
+
+        const Key = crypto.randomUUID();
+        try {
+            await Database.AddUser(Identifier, crypto.sha512(Key), ProjectID, Expiry, Usage, Whitelisted, Note);
+        } catch (er) {
+            console.log(er);
+            return reply.status(500).send({ error: "There was an issue creating this user" });
+        }
+
+        reply.send({
+            license_key: Key,
+            project_id: ProjectID
+        });
     });
 
     /*
@@ -441,41 +463,7 @@ async function routes(fastify, options) {
         }
     });
     
-    fastify.post("/add_user", { schema: { headers: HeadersSchema, body: WhiteistUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
-        const ScriptID = request.body.script_id;
-        const Identifier = request.body.identifier;
-        const Expiry = request.body.expire;
-        const Usage = request.body.usage || 0;
-        const Whitelisted = request.body.whitelisted;
-        const Note = request.body.note;
 
-        if (Expiry && new Date(Expiry).toString() == "Invalid Date" || Date.now() > Expiry) {
-            return reply.stauts(400).send({ error: "Expire must be a valid unix epoch timestamp" });
-        }
-
-        if (!await Database.ScriptOwnedByBuyer(request.APIKey, ScriptID)) {
-            return reply.status(400).send({ error: "You don't own this script" });
-        }
-
-        const Existing = await Database.GetUser(Identifier, ScriptID);
-        if (Existing) {
-            return reply.status(400).send({ error: "A user with this identifier already exists" })
-        }
-
-        const Key = crypto.randomUUID();
-        try {
-            await Database.AddUser(Identifier, crypto.sha512(Key), ScriptID, Expiry, Usage, Whitelisted, Note);
-        } catch (er) {
-            console.log(er);
-            return reply.status(500).send({ error: "There was an issue creating this user" });
-        }
-
-        reply.send({
-            license_key: Key,
-            generated_script: `getfenv(0).Key = '${Key}'; loadstring(game:HttpGet('https://luashield.com/script/${ScriptID}'))();`,
-            script_id: ScriptID
-        });
-    });
 
     fastify.post("/update_user", { schema: { headers: HeadersSchema, body: UpdateUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
