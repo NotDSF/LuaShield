@@ -12,7 +12,7 @@ async function Success(url, data) {
                     username: "LuaShield",
                     avatar_url: "https://i.imgur.com/6xyJbAg.png",
                     content: null,
-                    enbeds: [
+                    embeds: [
                         {
                             description: "User successfully authenticated",
                             color: 3886815,
@@ -37,7 +37,8 @@ async function Success(url, data) {
                                 }
                             ],
                             author: { name: "LuaShield" },
-                            thumbnail: { url: "https://i.imgur.com/6xyJbAg.png" }
+                            thumbnail: { url: "https://i.imgur.com/6xyJbAg.png" },
+                            footer: { text: `User was running -> ${data.Project}/${data.Script}` }
                         }
                     ],
                     attachments: []
@@ -63,7 +64,7 @@ async function Blacklist(url, data) {
                     username: "LuaShield",
                     avatar_url: "https://i.imgur.com/6xyJbAg.png",
                     content: null,
-                    enbeds: [
+                    embeds: [
                         {
                             description: "This user has been flagged for a possible blacklist",
                             color: 3886815,
@@ -113,7 +114,7 @@ async function Unauthorized(url, data) {
                     username: "LuaShield",
                     avatar_url: "https://i.imgur.com/6xyJbAg.png",
                     content: null,
-                    enbeds: [
+                    embeds: [
                         {
                             description: "This user has tried to run your script while unauthorized",
                             color: 3886815,
@@ -124,7 +125,7 @@ async function Unauthorized(url, data) {
                                 },
                                 {
                                     name: "Reason",
-                                    value: `\`${data.Reason}\``
+                                    value: `\`\`\`${data.Reason}\`\`\``
                                 }
                             ],
                             author: { name: "LuaShield" },

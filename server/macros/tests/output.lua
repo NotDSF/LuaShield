@@ -9,7 +9,9 @@ local function LPH_JIT(...) return ... end;
 local function LS_NUMENC(...) return ... end;
 
 local TimeNow = tick();
-local ScriptID = LPH_ENCSTR("SCRIPT_ID");
+local ProjectID = LPH_ENCSTR("PROJECT_ID");
+local ScriptIdentifier = LPH_ENCSTR("SCRIPT_ID");
+local LuaShield = 1;
 
 if getgenv().LuaShield then return end; -- Stops retards executing twice
 getgenv().LuaShield = true;
@@ -134,8 +136,6 @@ do
                     return req.Body;
                 elseif idx == "Headers" then
                     return req.Headers;
-                elseif idx == "Cookies" then
-                    return req.Cookies;
                 end;
             end);
         }));
@@ -178,7 +178,7 @@ local IDENTIFIERS = {
 local CURRENT_EXPLOIT = syn and syn.oth and IDENTIFIERS.SYNAPSEV3 or syn and IDENTIFIERS.SYNAPSE or not syn and IDENTIFIERS.SCRIPTWARE;
 
 local function CrashLog(msg) 
-  local Name = string.format("LuaShield/crash-%s-%d.txt", ScriptID, math.random(1, 9999)); 
+  local Name = string.format("LuaShield/crash-%s-%d.txt", ProjectID, math.random(1, 9999)); 
   writefile(Name, msg);
 end;
 
@@ -249,7 +249,7 @@ local function decodeString(str)
   while Pos <= #str do
     local Len = Sub(str, Pos, Pos);
     local Byte = Sub(str, Pos+1, Pos+Len);
-    Finished = Finished .. charTBL[Byte-((417+202)-532/LuaShield)];
+    Finished = Finished .. charTBL[Byte-((937-439)-411/LuaShield)];
     Pos = Pos + 1 + Len;
   end;
   return Finished;
@@ -282,7 +282,7 @@ local function JSONDecode(bytecode)
     while Pos <= #str do
       local Len = Sub(str, Pos, Pos);
       local Byte = Sub(str, Pos+1, Pos+Len);
-      NewBytecode = NewBytecode .. charTBL[Byte-((-446+644)-111/LuaShield)];
+      NewBytecode = NewBytecode .. charTBL[Byte-((865-499)-279/LuaShield)];
       Pos = Pos + 1 + Len;
     end;
   end;
@@ -315,25 +315,25 @@ local function JSONDecode(bytecode)
 
   local function DecodeObject() 
     local Size = gInt();
-    local Object = table.create(Size);
+    local Object = {};
 
     local function HandleValue() 
       local Type = gInt();
-      if Type == ((487+53)-465/LuaShield) then
+      if Type == ((367+182)-474/LuaShield) then
         return gString();
-      elseif Type == ((1083+169)-366/LuaShield) then
+      elseif Type == ((914+234)-262/LuaShield) then
         return gInt();
-      elseif Type == ((1085+418)-824/LuaShield) then
+      elseif Type == ((947+8)-276/LuaShield) then
         return DecodeObject();
-      elseif Type == ((328-113)-127/LuaShield) then
+      elseif Type == ((1053-73)-892/LuaShield) then
         return gBits8() == 1;
-      elseif Type == ((1082-712)-331/LuaShield) then -- special number
+      elseif Type == ((1094-447)-608/LuaShield) then -- special number
         return gString() + 0;
       end;
     end;
 
     local Timestamp = gString();
-    if os.time() - Timestamp > ((-7+896)-839/LuaShield) then
+    if os.time() - Timestamp > ((1851-871)-930/LuaShield) then
       LPH_CRASH();
       while true do end;
     end;
@@ -365,6 +365,8 @@ local EndPoints, HWID, synUserId = (function()
     decodeString(JSON["2"])
   }, Headers["1"], Headers["2"];
 end)();
+
+local LS_ScriptName, LS_ScriptVersion, LS_Exploit, LS_Executions, LS_CrackAttempts, LS_Identifer;
 
 local function FingerPrint()
   local Response = HttpGet(format("http://localhost/auth/%s", EndPoints[1]));
@@ -430,8 +432,8 @@ local function EQ(arg1, arg2)
   do 
         
         
-        local _d = "dc2209442f5a683836e4"
-        local _c = "311d2f1fe7b0391d95b0"
+        local _c = "0f92038cb132f7dd12ca"
+        local _d = "184aa5a532b213b33659"
 
         if _c == _d then
             _pos = 0;
@@ -445,9 +447,9 @@ local function EQ(arg1, arg2)
     
 
         
+        local _c = "128d54c86f9f999b9315"
+        local _d = "2c27863e2964ded32d13"
         
-        local _d = "e95ee131b4fc5d92255d"
-        local _c = "960a6446298552209059"
 
         if _c == _d then
             _pos = 0;
@@ -461,25 +463,9 @@ local function EQ(arg1, arg2)
     
 
         
+        local _c = "0014773e69cc8f965571"
+        local _d = "9a0b123ea751e877e329"
         
-        local _d = "628d9b44231dc271d747"
-        local _c = "65f28e7f2ea7d0a5193d"
-
-        if _c == _d then
-            _pos = 0;
-        end;
-
-        if _c == _c then
-            if _d == _c then
-                _pos = 0;
-            end;
-        end;
-    
-
-        
-        local _d = "b3dc52766a3de73cbdf0"
-        
-        local _c = "acf04978ce17555d1fc6"
 
         if _c == _d then
             _pos = 0;
@@ -533,6 +519,7 @@ if LPH_OBFUSCATED then
           or v2 == "https://raw.githubusercontent.com/Introvert1337/RobloxReleases/main/Scripts/Utilities/TableFormatter.lua" 
           or v2 == "\n\nsyn.request(%s)\n\nResponse Payload: %s"
           or v2 == "\n    - URL: " -- https://raw.githubusercontent.com/topitbopit/rblx/main/http_spy.lua
+          or v2 == "DEX"
           or v2 == "{} --[[DUPLICATE]]" then -- https://github.com/jheinem1/Lua-Serializer/blob/main/src/serializer.lua
             LPH_CRASH();
             while true do end;
@@ -644,7 +631,7 @@ end
 for i,v in pairs(sortoutjsonfuckery(FingerprintJSON[2])) do
   if Type(v) == "table" then
     v = sortoutjsonfuckery(v);
-    local Length = #v[3];
+    local Length = v[3];
     if Length == 8 then -- 1
       fakeSet = fakeSet .. v[1]*2+2321;
       NumberId = NumberId .. v[1]-v[2]-v[2];
@@ -668,13 +655,13 @@ for i,v in pairs(sortoutjsonfuckery(FingerprintJSON[2])) do
 end;
 
 do 
-local _0ec865_ = "0fbe6311aca1529c384f109bc8c2389cd37711b4";
+local _c9a405_ = "895fbe076c28125bc7a423702262bd9fc6a6e1b5";
     
 
-local _aaabc2_ = "eae9c983d48ad56243bfb1bfc30e2a18826c3a90";
+local _a6fe27_ = "687dd0f6875d2f47d757de242cecf2ee3c231c51";
     
 
-local _7ad02a_ = "84a1c3840aac38d148a261ac7bc95a0886398f16";
+local _d42918_ = "276610ca0ebbd68da78c0af2ab3be45af787780e";
     
  end;
 
@@ -692,30 +679,25 @@ do
 end;
 
 do 
-local _VarA = "79165a6f6194c2f4b697";
-local _VarB = "6d14cfcd3aa9714ecbb1"; 
+local _VarA = "803497e8001715390935";
+local _VarB = "7ba5b496f95d98cb092a"; 
 local _VARC = _VarA .. _VarA;
     
 
-local _VarA = "a6444c26849dbd17ac51";
-local _VarB = "c8c61ead70c9e0d6d002"; 
+local _VarA = "b28ee1a410d0fb0344bd";
+local _VarB = "e4279ad433ea08f2998f"; 
 local _VARC = _VarA .. _VarA;
     
 
-local _VarA = "87201f3ae3d6fc285929";
-local _VarB = "6ae7f13a75cfd6476a5e"; 
-local _VARC = _VarA .. _VarA;
-    
-
-local _VarA = "872579b99ce7eb17d12e";
-local _VarB = "48b5195d714d8c584110"; 
+local _VarA = "e21706fafff29f6a62bb";
+local _VarB = "c22732fe61b20e404349"; 
 local _VARC = _VarA .. _VarA;
     
  end
 
 -- A lot smarter to unpack strings after checks have occured! (will be using ce so 'unpack' applies)
 
-local ScriptId = LPH_ENCSTR("EknsQsbbtQzKOFKyepMlewERNRarAbiFoasAyiLCZXKDzDatOBHVJcbZzEVKsOGMBhAZfPohhFQopdQctiiEvmTmUNgRtcQUdMSl");
+local ScriptID = LPH_ENCSTR("EknsQsbbtQzKOFKyepMlewERNRarAbiFoasAyiLCZXKDzDatOBHVJcbZzEVKsOGMBhAZfPohhFQopdQctiiEvmTmUNgRtcQUdMSl");
 local ServerId = LPH_ENCSTR("rsficmcZCjNyIWdpGrjVgzoNBzVakkuFGmhEjapUGvgzhkIbWyujViPlBjKjFctWmKCsSTWDhuarpRECpJefGyZfcixbyEfhVGIz");
 local WebsocketId = LPH_ENCSTR("PibNiKCVCHuabRUvUfFqlcJMizJpuyOUJqeubRKduLWNQOCDjILzOwYpHXrMQSVlPLjRjgGuJVgRassCBcHtVcxYWwrsdLLxPJde");
 local StackReplay = tick();
@@ -731,7 +713,7 @@ CURRENT_EXPLOIT == IDENTIFIERS.SYNAPSE and syn.websocket.connect or
 CURRENT_EXPLOIT == IDENTIFIERS.SYNAPSEV3 and WebsocketClient.new or
 WebSocket.connect;
 
-local WS, WebsocketKey = Connect("ws://localhost:8880");
+local WS, WebsocketKey = Connect("ws://localhost/ws");
 if CURRENT_EXPLOIT == IDENTIFIERS.SYNAPSEV3 then
   WS:Connect();
 end;
@@ -763,7 +745,8 @@ local Response = LS_REQUEST({
     -- Fake Values (not needed)
     ["wkbzjadjkz"] = fakeSet, -- Fake NumberId
     ["slcrdmqaaf"] = RandomWord(10), -- fake fingerprint
-    ["script"] = ScriptID
+    ["ftajbeeujx"] = ProjectID,
+    ["yqkcgoegzy"] = ScriptIdentifier
   }
 });
 
@@ -780,15 +763,20 @@ local JSONResponse = JSONDecode(Response.Body);
 for _, v in pairs(JSONResponse) do
   if EQ(Type(v), "table") then
     fakeConcat();
-    local WLMessage = HWID..Sub(EndPoints[2], ((618-50)-568/LuaShield), ((885-249)-634/LuaShield))..(NumberId*((377+397)-772/LuaShield))..Fingerprint..Sub(EndPoints[1], ((786+63)-845/LuaShield), ((506+244)-745/LuaShield))..#ServerId..synUserId; -- concat go brr
+    local WLMessage = HWID..Sub(EndPoints[2], ((978-525)-453/LuaShield), ((-258+766)-506/LuaShield))..(NumberId*((631+328)-957/LuaShield))..Fingerprint..Sub(EndPoints[1], ((571+76)-643/LuaShield), ((1011-620)-386/LuaShield))..#ServerId..synUserId; -- concat go brr
     do 
-local _VarA = "7d30eefd25804f8fca83";
-local _VarB = "82fd4b49204521608af9"; 
+local _VarA = "cc0f6c2affa789839426";
+local _VarB = "c7e1dc168daacae975db"; 
 local _VARC = _VarA .. _VarA;
     
 
-local _VarA = "19bca2a987261fc61fac";
-local _VarB = "bc264457f2efd2f2fabe"; 
+local _VarA = "d6111fbe6681b730ca5c";
+local _VarB = "ee617abfbbd667619792"; 
+local _VARC = _VarA .. _VarA;
+    
+
+local _VarA = "d2f923f6e77315990bbc";
+local _VarB = "4cb2f862537c5bc0e4a8"; 
 local _VARC = _VarA .. _VarA;
     
  end
@@ -800,7 +788,7 @@ local _VARC = _VarA .. _VarA;
     local recievedReqId = v["3"];
     --local recievedCPUArc = v[6];
     local recievedWebsocketKey = v["4"];
-    local recievedScriptID = v["5"];
+    local recievedProjectID = v["5"];
     local recievedRequestHash = v["6"];
     local recievedJSXToken = v["7"];
     local antiJMP = "";
@@ -818,14 +806,14 @@ local _VARC = _VarA .. _VarA;
         JMPCounter = JMPCounter + 1;
         if EQ(recievedFingerprint, Fingerprint) then
           JMPCounter = JMPCounter + 1;
-          if EQ(recievedId, ScriptId) then
+          if EQ(recievedId, ScriptID) then
             JMPCounter = JMPCounter + 1;
             --if EQ(recievedFemIdentity, femmboyhubIdentity) then
             if EQ(recievedReqId, reqId) then
               JMPCounter = JMPCounter + 1;
               --if EQ(recievedCPUArc, CPU_Architecture) then
               if EQ(recievedWebsocketKey, HashString(WebsocketKey)) then
-                if EQ(recievedScriptID, HashString(ScriptID)) then
+                if EQ(recievedProjectID, HashString(ProjectID)) then
                   JMPCounter = JMPCounter + 1;
                   exploitenv.LuaShield = false;
                 
@@ -869,25 +857,9 @@ local _VARC = _VarA .. _VarA;
 
                   do 
         
-        local _d = 2
-        local _c = 1
-        
-
-        if _c > _d then
-            _pos = 0;
-        end;
-
-        if _d > _c then
-            if _d < _c then
-                _pos = 0;
-            end;
-        end;
-    
-
         
         local _c = 1
         local _d = 2
-        
 
         if _c > _d then
             _pos = 0;
@@ -904,6 +876,22 @@ local _VARC = _VarA .. _VarA;
         
         local _d = 2
         local _c = 1
+
+        if _c > _d then
+            _pos = 0;
+        end;
+
+        if _d > _c then
+            if _d < _c then
+                _pos = 0;
+            end;
+        end;
+    
+
+        
+        local _c = 1
+        
+        local _d = 2
 
         if _c > _d then
             _pos = 0;
@@ -922,36 +910,37 @@ local _Var = _pos;
 
 local _Var = _pos;
     
-
-local _Var = _pos;
-    
-
-local _Var = _pos;
-    
  end
-  	  
-                  BackupPrint(format("Finished authentication in %ss", tick() - TimeNow));
+                  
+                  LS_ScriptName = v["8"];
+                  LS_ScriptVersion = v["9"];
+                  LS_Exploit = v["10"];
+                  LS_Executions = v["11"];
+                  LS_CrackAttempts = v["12"];
+                  LS_Identifer = v["13"];
+
+                  BackupPrint(format("LuaShield [%s]: Authenticated in %ss", LS_ScriptName, tick() - TimeNow));
                   WLSuccess = true; --UpdateGUI("Status", "Ready!", 354); wait(.25); --ScreenGui:Destroy();
                   
                   do 
-    local function af607950bb123a374d8f0a() end;
-    af607950bb123a374d8f0a();
+    local function adb77c1c3cb39333fb017a() end;
+    adb77c1c3cb39333fb017a();
     
 
-    local function ab361e3d0869918a7df3ea() end;
-    ab361e3d0869918a7df3ea();
+    local function a5d7079722cd6e5bbdd54a() end;
+    a5d7079722cd6e5bbdd54a();
     
 
-    local function ad5ace237e18380ca42b6a() end;
-    ad5ace237e18380ca42b6a();
+    local function a09c30ca20ff2b6ee5d54a() end;
+    a09c30ca20ff2b6ee5d54a();
     
  end;
                   (function() 
                     do 
         
-        local _c = 1
         
         local _d = 2
+        local _c = 1
 
         if _c > _d then
             _pos = 0;
@@ -967,22 +956,6 @@ local _Var = _pos;
         
         local _c = 1
         local _d = 2
-        
-
-        if _c > _d then
-            _pos = 0;
-        end;
-
-        if _d > _c then
-            if _d < _c then
-                _pos = 0;
-            end;
-        end;
-    
-
-        
-        local _d = 2
-        local _c = 1
         
 
         if _c > _d then
@@ -1018,29 +991,18 @@ local _Var = _pos;
 
 local _Var = _pos;
     
-
-local _Var = _pos;
-    
  end
                     do 
-    local function a5e90a2a7446d7c83b1a3a() end;
-    a5e90a2a7446d7c83b1a3a();
+    local function a7c3c3fe59a21b83f1c9ba() end;
+    a7c3c3fe59a21b83f1c9ba();
     
 
-    local function a7e425621fea52f8c5060a() end;
-    a7e425621fea52f8c5060a();
+    local function a486dfa08d8253166ad85a() end;
+    a486dfa08d8253166ad85a();
     
 
-    local function aab5900e3bbc53d7e8ba4a() end;
-    aab5900e3bbc53d7e8ba4a();
-    
-
-    local function a5b078e04af2f9cc180b6a() end;
-    a5b078e04af2f9cc180b6a();
-    
-
-    local function a417dd29e2e337a437ab0a() end;
-    a417dd29e2e337a437ab0a();
+    local function a81b3c682b75a26b7d945a() end;
+    a81b3c682b75a26b7d945a();
     
  end
                     do
@@ -1063,20 +1025,12 @@ local _Var = _pos;
                       end;
                       
                       do 
-    local function ac0d933e50181e1e882eba() end;
-    ac0d933e50181e1e882eba();
+    local function a31fcca77e18dbd6eccb5a() end;
+    a31fcca77e18dbd6eccb5a();
     
 
-    local function a25eaf31ef61ae58f1cbca() end;
-    a25eaf31ef61ae58f1cbca();
-    
-
-    local function a7e2e8a82f8b8c662fba3a() end;
-    a7e2e8a82f8b8c662fba3a();
-    
-
-    local function a50acec2969597003b552a() end;
-    a50acec2969597003b552a();
+    local function ace8ff3d20e12cec6fe74a() end;
+    ace8ff3d20e12cec6fe74a();
     
  end
 
@@ -1109,20 +1063,24 @@ local _Var = _pos;
                       RequestHash = nil;
                       decodeString = nil;
                       do 
-    local function a47f02d70dbe243d3bc22a() end;
-    a47f02d70dbe243d3bc22a();
+    local function a48da9930b0c1e0d2477ca() end;
+    a48da9930b0c1e0d2477ca();
     
 
-    local function ab39e41d18c29e7386c93a() end;
-    ab39e41d18c29e7386c93a();
+    local function acfe8f6108b13be74a95ca() end;
+    acfe8f6108b13be74a95ca();
     
 
-    local function a17f83af70ac8696d2360a() end;
-    a17f83af70ac8696d2360a();
+    local function ad75fed2fa94cc9fafbf7a() end;
+    ad75fed2fa94cc9fafbf7a();
+    
+
+    local function a6dc37214c1bcab26d458a() end;
+    a6dc37214c1bcab26d458a();
     
  end
                       HashString = nil;
-                      ScriptId = nil;
+                      ScriptID = nil;
                       ServerId = nil;
                       WebsocketId = nil;
                       WLMessage = nil;
@@ -1131,7 +1089,7 @@ local _Var = _pos;
                       recievedId = nil;
                       recievedReqId = nil;
                       recievedWebsocketKey = nil;
-                      recievedScriptID = nil;
+                      recievedProjectID = nil;
                       recievedRequestHash = nil;
                     end;
 
@@ -1158,23 +1116,21 @@ local _Var = _pos;
                       end;
                     end)();
 
-                    local a = "";
-
-if a == "nigger" then
-  print("balls")
-end
+                    for i,v in pairs((fakeJMP and getgc)()) do
+  if (RandomWord and type)(v) == "function" and islclosure(v) then
+    if tfind(Getconstants(v), "nigger") then
+      print("h")
+    end;
+  end;
+end;
                   end)();
                   do 
-    local function a7b81f7d8d05d9aedd736a() end;
-    a7b81f7d8d05d9aedd736a();
+    local function aa6d3072f4e98275ef220a() end;
+    aa6d3072f4e98275ef220a();
     
 
-    local function a04fd801da7a488564cdaa() end;
-    a04fd801da7a488564cdaa();
-    
-
-    local function a51277e61883f2d302109a() end;
-    a51277e61883f2d302109a();
+    local function a5ab160c7da8ad46fdaffa() end;
+    a5ab160c7da8ad46fdaffa();
     
  end;
                 end;

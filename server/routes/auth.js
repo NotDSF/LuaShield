@@ -26,6 +26,10 @@ async function routes(fastify, options) {
 			return done();
 		}
 
+		if (Blacklisted.has(request.ip)) {
+			return reply.status(502);
+		}
+
 		const Exploit = UserAgent.includes("/") ? UserAgent.split("/").shift() : UserAgent.split(" ").shift();
 
 		switch (Exploit) {
@@ -99,8 +103,9 @@ async function routes(fastify, options) {
 		const Fingerprint = request.headers[config.headers.fingerprint];
 		const NumberID = request.headers[config.headers.numberid];
 		const ServerID = request.headers[config.headers.serverid];
-		const ProjectID = request.headers["script"];
+		const ProjectID = request.headers[config.headers.projectid];
 		const RecievedWS = request.headers[config.headers.websocketid];
+		const ScriptIdentifier = request.headers[config.headers.scriptid];
 		let Duration = request.headers[config.headers.duration];
 		const UserID = request.UserID;
 		const HWID = request.HWID;
@@ -110,7 +115,7 @@ async function routes(fastify, options) {
 		const WebsocketKey = Connected.get(request.ip === "::1" ? "127.0.0.1" : request.ip);
 
 		// check if all values were inputted
-		if (!Fingerprint || !NumberID || !ServerID || !UserID || !HWID || !Key || !WebsocketKey || !Duration || !RequestHash || !ProjectID || !RecievedWS) {
+		if (!Fingerprint || !NumberID || !ServerID || !UserID || !HWID || !Key || !WebsocketKey || !Duration || !RequestHash || !ProjectID || !RecievedWS || !ScriptIdentifier) {
 			return reply.status(502)
 		}
 
@@ -126,6 +131,16 @@ async function routes(fastify, options) {
 		const Flag = flag.getFlag(Fingerprint, NumberID);
 
 		if (!Project || !Project.Online) {
+			return reply.status(502)
+		}
+
+		const Script = await Database.GetScript(ProjectID, ScriptIdentifier);
+
+		if (!Script) {
+			await webhooks.Unauthorized(Project.UnauthorizedWebhook, {
+				IP: request.ip,
+				Reason: `This user tried running a LuaShield script with an unknown SID (Script ID)`
+			});
 			return reply.status(502)
 		}
 
@@ -234,8 +249,8 @@ async function routes(fastify, options) {
 				crypto.hashstr(ProjectID),
 				RequestHash,
 				JSXToken,
-				Project.Name,
-				"",
+				Script.Name,
+				Script.Version,
 				Whitelist.Exploit,
 				Whitelist.Executions,
 				Whitelist.CrackAttempts,
@@ -249,11 +264,13 @@ async function routes(fastify, options) {
 			console.log(er);
 		}
 
-		webhooks.Success(Project.SuccessWebhook, {
+		await webhooks.Success(Project.SuccessWebhook, {
 			IP: request.ip,
 			UserAgent: request.headers["user-agent"],
 			Whitelist: Whitelist,
-			Duration: Duration
+			Duration: Duration,
+			Project: Project.Name,
+			Script: Script.Name
 		})
 	});
 
@@ -283,6 +300,10 @@ async function routes(fastify, options) {
 
 		const Whitelist = await Database.GetWhitelistWithHWID(HWID);
 		if (!Whitelist || !Whitelist.Whitelisted) {
+			Data.Token = crypto.randomstr(50);
+		}
+
+		if (Blacklisted.has(request.ip)) {
 			Data.Token = crypto.randomstr(50);
 		}
 

@@ -287,6 +287,7 @@ async function routes(fastify, options) {
             .replace(Regex("ws://localhost:8880", "wss://luashield.com"))
             .replace("local function LPH_CRASH() error(\"Blocked crash\"); end;", "")
             .replace("PROJECT_ID", ProjectID)
+            .replace("SCRIPT_ID", Info.id)
             .replace("--_SCRIPT_--", Script);
 
         try {
@@ -312,6 +313,7 @@ async function routes(fastify, options) {
 
             mkdirSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}`));
             writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), Whitelist);
+            Info.Loader = `https://luashield.com/s/${ProjectID}/${Info.id}`;
             reply.send(Info);
         } catch (er) {
             return reply.status(500).send({ error: er.toString() });

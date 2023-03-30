@@ -10,6 +10,7 @@ local function LS_NUMENC(...) return ... end;
 
 local TimeNow = tick();
 local ProjectID = LPH_ENCSTR("PROJECT_ID");
+local ScriptIdentifier = LPH_ENCSTR("SCRIPT_ID");
 local LuaShield = 1;
 
 if getgenv().LuaShield then return end; -- Stops retards executing twice
@@ -672,7 +673,8 @@ local Response = LS_REQUEST({
     -- Fake Values (not needed)
     ["wkbzjadjkz"] = fakeSet, -- Fake NumberId
     ["slcrdmqaaf"] = RandomWord(10), -- fake fingerprint
-    ["script"] = ProjectID
+    ["ftajbeeujx"] = ProjectID,
+    ["yqkcgoegzy"] = ScriptIdentifier
   }
 });
 
