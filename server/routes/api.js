@@ -93,7 +93,7 @@ async function routes(fastify, options) {
             max_executions: { type: "number", minimum: 0 },
             note: { type: "string", minLength: 3, maxLength: 20 }
         },
-        required: ["whitelisted", "script_id", "username"]
+        required: ["whitelisted", "project_id", "username"]
     }
     
     const SignupSchema = {
@@ -306,6 +306,39 @@ async function routes(fastify, options) {
         }
     });
 
+    fastify.post("/update_user", { schema: { headers: HeadersSchema, body: UpdateUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ProjectID = request.body.project_id;
+        const Username = request.body.username;
+        const Whitelisted = request.body.whitelisted;
+        const Expiry = request.body.expire;
+        const MaxExecutions = request.body.max_executions;
+        const Note = request.body.note;
+
+        if (Expiry && new Date(Expiry * 1000).toString() == "Invalid Date" || Date.now() > (Expiry * 1000)) {
+            return reply.status(400).send({ error: "Expire must be a valid unix epoch timestamp" });
+        }
+
+        if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
+            return reply.status(400).send({ error: "You don't own this project" });
+        }
+
+        const Existing = await Database.GetUser(Username, ProjectID);
+        if (!Existing) {
+            return reply.status(400).send({ error: "This user doesn't exist" });
+        }
+
+        if (!Expiry && !MaxExecutions && !Note && Whitelisted === Existing.Whitelisted) {
+            return reply.send(Existing);
+        }
+
+        try {
+            let Info = await Database.UpdateUser(Existing.id, Expiry ? Expiry * 1000 : Expiry, MaxExecutions, Whitelisted, Note);
+            return reply.send(Info);
+        } catch (er) {
+            return reply.status(500).send({ error: "There was an issue while updating this user" });
+        }
+    });
+
     fastify.post("/add_user", { schema: { headers: HeadersSchema, body: WhiteistUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ProjectID = request.body.project_id;
         const Username = request.body.username;
@@ -314,7 +347,7 @@ async function routes(fastify, options) {
         const Whitelisted = request.body.whitelisted;
         const Note = request.body.note;
 
-        if (Expiry && new Date(Expiry).toString() == "Invalid Date" || Date.now() > Expiry) {
+        if (Expiry && new Date(Expiry * 1000).toString() == "Invalid Date" || Date.now() > (Expiry * 1000)) {
             return reply.stauts(400).send({ error: "Expire must be a valid unix epoch timestamp" });
         }
 
@@ -327,18 +360,16 @@ async function routes(fastify, options) {
             return reply.status(400).send({ error: "A user with this username already exists" })
         }
 
+
+
         const Key = crypto.randomUUID();
         try {
-            await Database.AddUser(Username, crypto.sha512(Key), ProjectID, Expiry, MaxExecutions, Whitelisted, Note);
+            let Info = await Database.AddUser(Username, crypto.sha512(Key), ProjectID, Expiry * 1000, MaxExecutions, Whitelisted, Note);
+            reply.send(Info);
         } catch (er) {
             console.log(er);
             return reply.status(500).send({ error: "There was an issue creating this user" });
         }
-
-        reply.send({
-            license_key: Key,
-            project_id: ProjectID
-        });
     });
 
     fastify.post("/delete_user", { schema: { headers: HeadersSchema, body: DeleteUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {

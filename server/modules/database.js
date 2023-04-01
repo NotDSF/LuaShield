@@ -183,10 +183,10 @@ module.exports = class Database {
         });
     }
 
-    async GetUser(Identifier, ProjectID) {
+    async GetUser(Username, ProjectID) {
         return new Promise(async (resolve, reject) => {
             try {
-                const Result = await prisma.user.findFirst({ where: { Identifier: Identifier, ProjectID: ProjectID } });
+                const Result = await prisma.user.findFirst({ where: { Username, ProjectID } });
                 resolve(Result)
             } catch (er) {
                 console.log(er);
@@ -195,13 +195,13 @@ module.exports = class Database {
         });
     }
 
-    async AddUser(Identifier, HashedKey, ProjectID, Expiry, Usage, Whitelisted, Note) {
+    async AddUser(Username, HashedKey, ProjectID, Expiry, Usage, Whitelisted, Note) {
         return new Promise(async (resolve, reject) => {
             try {
                 const CreateUser = prisma.user.create({
                     data: {
                         Key: HashedKey,
-                        Identifier: Identifier,
+                        Username: Username,
                         ProjectID: ProjectID,
                         ExpireAt: Expiry,
                         MaxExecutions: Usage,
@@ -375,10 +375,10 @@ module.exports = class Database {
         });
     }
 
-    async DeleteUser(ProjectID, Identifier) {
+    async DeleteUser(ProjectID, Username) {
         return new Promise(async (resolve, reject) => {
             try {
-                const User = await prisma.user.findFirst({ where: { ProjectID, Identifier } });
+                const User = await prisma.user.findFirst({ where: { ProjectID, Username } });
 
                 const DeleteUser = prisma.user.delete({ where: { id: User.id } });
                 const UpdateProjectCount = prisma.project.update({
