@@ -80,6 +80,27 @@ async function routes(fastify, options) {
 		done();
 	});
 
+	fastify.get("/info", async (request, reply) => {
+		const ProjectID = request.headers.project;
+		const Key = request.headers.key;
+
+		if (!Key) return reply.status(500);
+		if (!ProjectID) return reply.status(500);
+
+		const Project = await Database.GetProject(ProjectID);
+		if (!Project) return reply.status(500);
+
+		const WhitelistHWID = await Database.GetWhitelistWithHWID(request.HWID);
+		const WhitelistKey = await Database.GetWhitelist(crypto.sha512(Key));
+
+		reply.send(EncodeJSON({
+			a: WhitelistHWID ? 1 : 0,
+			d: WhitelistKey ? 1 : 0,
+			b: +(!Project.SynapseX && request.Exploit === "Synapse X" || !Project.ScriptWare && request.Exploit === "Script Ware" || !Project.SynapseV3 && request.Exploit === "Synapse V3"),
+			c: Project.Online ? 1 : 0
+		}))
+	})
+
 	fastify.get(`/${config.endpointsname}`, (request, reply) => {
 		if (!request.Exploit) return;
 		
@@ -281,17 +302,17 @@ async function routes(fastify, options) {
 		const HWID = request.HWID;
 
 		if (!Token || !HWID) {
-			return reply.status(400);
+			return reply.status(400).send("");
 		}
 
 		const Data = WhitelistJSXToken.get(request.ip);
 		if (!Data || Data.Token !== Token) {
-			return reply.status(400);
+			return reply.status(400).send("");
 		}
 
 		const Project = await Database.GetProject(Data.ProjectID);
 		if (!Project || !Project.Online) {
-			return reply.status(400);
+			return reply.status(400).send("");
 		}
 
 		const NewToken = crypto.randomstr(50);
@@ -299,6 +320,7 @@ async function routes(fastify, options) {
 		Data.Token = NewToken;
 
 		const Whitelist = await Database.GetWhitelistWithHWID(HWID);
+		console.log(Whitelist)
 		if (!Whitelist || !Whitelist.Whitelisted) {
 			Data.Token = crypto.randomstr(50);
 		}

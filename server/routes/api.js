@@ -384,7 +384,8 @@ async function routes(fastify, options) {
 
         const Key = crypto.randomUUID();
         try {
-            let Info = await Database.AddUser(Username, crypto.sha512(Key), ProjectID, Expiry * 1000, MaxExecutions, Whitelisted, Note);
+            let Info = await Database.AddUser(Username, crypto.sha512(Key), ProjectID, Expiry ? Expiry * 1000 : undefined, MaxExecutions, Whitelisted, Note);
+            Info.Key = Key;
             reply.send(Info);
         } catch (er) {
             console.log(er);

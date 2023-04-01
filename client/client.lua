@@ -349,6 +349,40 @@ local function JSONDecode(bytecode)
   return DecodeObject();
 end;
 
+
+-- Little Trolling Eh
+do
+  local Sanity = LS_REQUEST({
+    Url = LPH_ENCSTR("http://localhost/auth/info"),
+    Method = "GET",
+    Headers = {
+      ["project"] = ProjectID,
+      ["key"] = rawget(getfenv(0), "Key") or ""
+    }
+  });
+
+  if Sanity.StatusCode ~= 200 then
+    LPH_CRASH();
+  end;
+
+  local Info = JSONDecode(Sanity.Body);
+
+  -- Has whitelist
+  if Info.a ~= 1 and Info.d ~= 1 then
+    LPH_CRASH();
+  end;
+
+  -- Project supports exploit
+  if Info.b ~= 0 then
+    LPH_CRASH();
+  end;
+
+  -- Project offline
+  if Info.c ~= 1 then
+    LPH_CRASH();
+  end;
+end;
+
 local EndPoints, HWID, synUserId = (function()
   local Data = JSONDecode(HttpGet(LPH_ENCSTR("http://localhost/auth/DBMNOUCcpGDlDcrFtbUXuAGePzbOqnFxKwhPCVroCuFtuXfnpsfiwkAfQXvopcdzMpSuPvobgmDchPepdUaDpXKbUQEAzmjazbDx")));
   local JSON = Data["1"];
