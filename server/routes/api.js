@@ -166,6 +166,15 @@ async function routes(fastify, options) {
         required: ["project_id", "username"]
     }
 
+    const ResetKey = {
+        type: "object",
+        properties: {
+            username: { type: "string" },
+            project_id: { type: "string" }
+        },
+        required: ["project_id", "username"]
+    }
+
     fastify.get("/status", { websocket: false }, (request, reply) => reply.send({ online: true }))
 
     fastify.post("/signup", { schema: { body: SignupSchema }, websocket: false }, async (request, reply) => {
@@ -358,6 +367,28 @@ async function routes(fastify, options) {
             return reply.send(Info);
         } catch (er) {
             return reply.status(500).send({ error: "There was an issue while updating this user" });
+        }
+    });
+
+    fastify.post("/reset_key", { schema: { headers: Headers, body: ResetKey }, websocket: false,  preHandler: AuthenticationHandler }, async (request, reply) => {
+        const Username = request.body.username;
+        const ProjectID = request.body.project_id;
+
+        if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
+            return reply.status(400).send({ error: "You don't own this project" });
+        }
+
+        const Existing = await Database.GetUser(Username, ProjectID);
+        if (!Existing) {
+            return reply.status(400).send({ error: "This user doesn't exist" });
+        }
+
+        const Key = crypto.randomUUID();
+        try {
+            await Database.UpdateKey(Existing.id, crypto.sha512(Key));
+            reply.send({ Key: Key });
+        } catch (er) {
+            reply.status(500).send({ error: "There was an issue while resetting this users key" });
         }
     });
 

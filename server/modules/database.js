@@ -430,8 +430,26 @@ module.exports = class Database {
                 resolve(Result);
             } catch (er) {
                 console.log(er);
+                reject();
             }
         });
+    }
+
+    async UpdateKey(UserCollectionID, Key) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.user.update({ 
+                    where: { id: UserCollectionID },
+                    data: {
+                        Key
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        })
     }
 }
 
