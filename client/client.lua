@@ -366,7 +366,7 @@ local EndPoints, HWID, synUserId = (function()
   }, Headers["1"], Headers["2"];
 end)();
 
-local LS_ScriptName, LS_ScriptVersion, LS_Exploit, LS_Executions, LS_CrackAttempts, LS_Identifer;
+local LS_ScriptName, LS_ScriptVersion, LS_Exploit, LS_Executions, LS_CrackAttempts, LS_Username;
 
 local function FingerPrint()
   local Response = HttpGet(format("http://localhost/auth/%s", EndPoints[1]));
@@ -776,7 +776,7 @@ for _, v in pairs(JSONResponse) do
                   LS_Exploit = v["10"];
                   LS_Executions = v["11"];
                   LS_CrackAttempts = v["12"];
-                  LS_Identifer = v["13"];
+                  LS_Username = v["13"];
 
                   BackupPrint(format("LuaShield [%s]: Authenticated in %ss", LS_ScriptName, tick() - TimeNow));
                   WLSuccess = true; --UpdateGUI("Status", "Ready!", 354); wait(.25); --ScreenGui:Destroy();

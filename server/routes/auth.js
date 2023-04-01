@@ -147,7 +147,7 @@ async function routes(fastify, options) {
 		if (!Project.SynapseX && request.Exploit === "Synapse X" || !Project.ScriptWare && request.Exploit === "Script Ware" || !Project.SynapseV3 && request.Exploit === "Synapse V3") {
 			await webhooks.Unauthorized(Project.UnauthorizedWebhook, {
 				IP: request.ip,
-				Reason: `This user tried running this script on a disallowed exploit (${request.Exploit}), identifier: ${Whitelist.Identifier}`
+				Reason: `This user tried running this script on a disallowed exploit (${request.Exploit}), username: ${Whitelist.Username}`
 			});
 			return reply.status(502)
 		}
@@ -188,7 +188,7 @@ async function routes(fastify, options) {
 			if (Whitelist.ExpireAt && Date.now() <= Whitelist.ExpireAt) {
 				await webhooks.Unauthorized(Project.UnauthorizedWebhook, {
 					IP: request.ip,
-					Reason: `This user's whitelist has expired, identifier: \`${Whitelist.Identifier}\``
+					Reason: `This user's whitelist has expired, username: \`${Whitelist.Username}\``
 				});
 				return reply.status(502)
 			}
@@ -196,7 +196,7 @@ async function routes(fastify, options) {
 			if (Whitelist.MaxExecutions !== 0 && Whitelit.Executions >= Whitelist.MaxExecutions) {
 				await webhooks.Unauthorized(Project.UnauthorizedWebhook, {
 					IP: request.ip,
-					Reason: `This user has reached their maximum amount of executions (${Whitelist.MaxExecutions}), identifier: \`${Whitelist.Identifier}\``
+					Reason: `This user has reached their maximum amount of executions (${Whitelist.MaxExecutions}), username: \`${Whitelist.Username}\``
 				});
 				return reply.status(502)
 			}
@@ -254,7 +254,7 @@ async function routes(fastify, options) {
 				Whitelist.Exploit,
 				Whitelist.Executions,
 				Whitelist.CrackAttempts,
-				Whitelist.Identifier
+				Whitelist.Username
 			]
 		}, request.HWID));
 
