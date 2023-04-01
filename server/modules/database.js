@@ -320,31 +320,6 @@ module.exports = class Database {
         })
     }
 
-    async DeleteUser(UserCollectionID, ScriptID) {
-        return new Promise(async (resolve, reject) => {
-            try {
-                const DeleteUser = prisma.user.delete({
-                    where: { id: UserCollectionID }
-                });
-
-                const UpdateScriptUsers = prisma.script.update({
-                    where: { id: ScriptID },
-                    data: {
-                        Users: { 
-                            increment: -1
-                        }
-                    }
-                });
-
-                const Transaction = await prisma.$transaction([DeleteUser, UpdateScriptUsers]);
-                resolve(Transaction[0]);
-            } catch (er) {
-                console.log(er);
-                reject();
-            }
-        });
-    }
-
     async MakeScript(ProjectID, Name, Version) {
         return new Promise(async (resolve, reject) => {
             try {
@@ -398,6 +373,42 @@ module.exports = class Database {
                 reject();
             }
         });
+    }
+
+    async DeleteUser(ProjectID, Identifier) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const User = await prisma.user.findFirst({ where: { ProjectID, Identifier } });
+
+                const DeleteUser = prisma.user.delete({ where: { id: User.id } });
+                const UpdateProjectCount = prisma.project.update({
+                    where: { id: ProjectID },
+                    data: {
+                        Users: {
+                            increment: -1
+                        }
+                    }
+                });
+
+                const Transaction = await prisma.$transaction([DeleteUser, UpdateProjectCount]);
+                resolve(Transaction[0]);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
+
+    async GetUsers(ProjectID) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.user.findMany({ where: { ProjectID: ProjectID } });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        })
     }
 }
 

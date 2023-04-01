@@ -95,15 +95,6 @@ async function routes(fastify, options) {
         },
         required: ["whitelisted", "script_id", "identifier"]
     }
-
-    const DeleteUserSchema = {
-        type: "object",
-        properties: {
-            script_id: { type: "string" },
-            identifier: { type: "string" }
-        },
-        required: ["script_id", "identifier"]
-    }
     
     const SignupSchema = {
         type: "object",
@@ -142,6 +133,15 @@ async function routes(fastify, options) {
             project_id: { type: "string" }
         },
         required: ["name", "script", "project_id"]
+    }
+
+    const DeleteUserSchema = {
+        type: "object",
+        properties: {
+            identifier: { type: "string" },
+            project_id: { type: "string" }
+        },
+        required: ["project_id", "identifier"]
     }
 
     fastify.get("/status", { websocket: false }, (request, reply) => reply.send({ online: true }))
@@ -341,6 +341,18 @@ async function routes(fastify, options) {
         });
     });
 
+    fastify.post("/delete_user", { schema: { headers: HeadersSchema, body: DeleteUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ProjectID = request.body.project_id;
+        const Identifier = request.body.identifier;
+
+        try {
+            await Database.DeleteUser(ProjectID, Identifier);
+            reply.send({ success: true });
+        } catch (er) {
+            reply.status(500).send({ error: "Something went wrong trying to delete this user" });
+        }
+    });
+
     fastify.post("/update_script", { schema: { headers: HeadersSchema, body: UpdateScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
         const ProjectID = request.body.project_id;
@@ -415,6 +427,22 @@ async function routes(fastify, options) {
         }
 
         reply.send(Projects);
+    });
+
+    fastify.get("/:id/users", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ProjectID = request.params.id;
+        const Project = await Database.GetProject(ProjectID);
+
+        if (!Project) {
+            return reply.status(400).send({ error: "This project doesn't exist" });
+        }
+
+        if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
+            return reply.status(400).send({ error: "You don't own this project" });
+        }
+
+        const Users = await Database.GetUsers(ProjectID);
+        reply.send(Users);
     });
 }
 
