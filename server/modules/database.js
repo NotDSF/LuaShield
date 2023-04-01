@@ -278,7 +278,7 @@ module.exports = class Database {
         })
     }
 
-    async UpdateScript(ScriptID, Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, Version, Exploits) {
+    async UpdateScript(ScriptID, Version) {
         return new Promise(async (resolve, reject) => {
             try {
                 const Result = await prisma.script.update({
@@ -287,14 +287,7 @@ module.exports = class Database {
                         Version: Version,
                         Versions: {
                             push: Version
-                        },
-                        Name: Name,
-                        SynapseX: Exploits.synapse_x,
-                        ScriptWare: Exploits.script_ware,
-                        SynapseV3: Exploits.synapse_v3,
-                        SuccessWebhook: SuccessWebhook,
-                        BlacklistWebhook: BlacklistWebhook,
-                        UnauthorizedWebhook: UnauthorizedWebhook
+                        }
                     }
                 });
                 resolve(Result);
