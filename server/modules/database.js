@@ -410,5 +410,28 @@ module.exports = class Database {
             }
         })
     }
+
+    async UpdateProject(ProjectID, Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, Exploits, Online) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.project.update({
+                    where: { id: ProjectID },
+                    data: {
+                        Name,
+                        SuccessWebhook,
+                        BlacklistWebhook,
+                        UnauthorizedWebhook,
+                        SynapseX: Exploits ? Exploits.synapse_x : undefined,
+                        ScriptWare: Exploits ? Exploits.script_ware : undefined,
+                        SynapseV3: Exploits ? Exploits.synapse_v3 : undefined,
+                        Online
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+            }
+        });
+    }
 }
 

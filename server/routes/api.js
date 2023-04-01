@@ -70,6 +70,28 @@ async function routes(fastify, options) {
         required: ["name", "success_webhook", "blacklist_webhook", "unauthorized_webhook", "allowed_exploits"]
     }
 
+    const UpdateProjectSchema = {
+        type: "object",
+        properties: {
+            project_id: { type: "string" },
+            name: { type: "string", maxLength: 20, minLength: 3 },
+            success_webhook: { type: "string", maxLength: 150, minLength: 50 },
+            blacklist_webhook: { type: "string", maxLength: 150, minLength: 50 },
+            unauthorized_webhook: { type: "string", maxLength: 150, minLength: 50 },
+            allowed_exploits: { 
+                type: "object",
+                properties: {
+                    synapse_x: { type: "boolean" },
+                    script_ware: { type: "boolean" },
+                    synapse_v3: { type: "boolean" }
+                },
+                required: ["synapse_x", "script_ware", "synapse_v3"]
+            },
+            online: { type: "boolean" }
+        },
+        required: ["project_id"]
+    }
+
     const WhiteistUserSchema = {
         type: "object",
         properties: {
@@ -360,8 +382,6 @@ async function routes(fastify, options) {
             return reply.status(400).send({ error: "A user with this username already exists" })
         }
 
-
-
         const Key = crypto.randomUUID();
         try {
             let Info = await Database.AddUser(Username, crypto.sha512(Key), ProjectID, Expiry * 1000, MaxExecutions, Whitelisted, Note);
@@ -449,6 +469,64 @@ async function routes(fastify, options) {
         }
     });
 
+    fastify.post("/update_project", { schema: { headers: HeadersSchema, body: UpdateProjectSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ProjectID = request.body.project_id;
+        const Name = request.body.name;
+        let SuccessWebhook = request.body.success_webhook;
+        let BlacklistWebhook = request.body.blacklist_webhook;
+        let UnauthorizedWebhook = request.body.unauthorized_webhook;
+        const Exploits = request.body.allowed_exploits;
+        const Online = request.body.online;
+
+        const Project = await Database.GetProject(ProjectID);
+        if (!Project) {
+            return reply.status(400).send({ error: "This project doesn't exist" });
+        }
+
+        if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
+            return reply.status(400).send({ error: "This project isn't owned by you" });
+        }
+
+        SuccessWebhook = SuccessWebhook || Project.SuccessWebhook;
+        BlacklistWebhook = BlacklistWebhook || Project.BlacklistWebhook;
+        UnauthorizedWebhook = UnauthorizedWebhook || Project.UnauthorizedWebhook;
+
+        SuccessWebhook = SuccessWebhook.match(/discord\.com\/api\/webhooks\/\d+\/[\S]+$/);
+        BlacklistWebhook = BlacklistWebhook.match(/discord\.com\/api\/webhooks\/\d+\/[\S]+$/);
+        UnauthorizedWebhook = UnauthorizedWebhook.match(/discord\.com\/api\/webhooks\/\d+\/[\S]+$/);
+
+        if (!SuccessWebhook) {
+            return reply.status(400).send({ error: "success_webhook is not a valid webhook" });
+        }
+
+        if (!BlacklistWebhook) {
+            return reply.status(400).send({ error: "blacklist_webhook is not a valid webhook" });
+        }
+
+        if (!UnauthorizedWebhook) {
+            return reply.status(400).send({ error: "unauthorized_webhook is not a valid webhook" });
+        }
+
+        SuccessWebhook = "https://" + SuccessWebhook.shift();
+        BlacklistWebhook = "https://" + BlacklistWebhook.shift();
+        UnauthorizedWebhook = "https://" + UnauthorizedWebhook.shift();
+        
+        try {
+            await webhooks.SetupWebhook(SuccessWebhook, Name || Project.Name, "success");
+            await webhooks.SetupWebhook(BlacklistWebhook, Name || Project.Name, "blacklist");
+            await webhooks.SetupWebhook(UnauthorizedWebhook, Name || Project.Name, "unauthorized");
+        } catch (er) {
+            return reply.status(500).send({ error: er.toString() });
+        }
+
+        try {
+            let Info = await Database.UpdateProject(ProjectID, Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, Exploits, Online);
+            reply.send(Info);
+        } catch (er) {
+            return reply.status(500).send({ error: "There was an issue while updating this project" });
+        }
+    });
+    
     fastify.get("/projects", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const Projects = await Database.GetProjects(request.APIKey);
 
