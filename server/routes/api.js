@@ -185,6 +185,7 @@ async function routes(fastify, options) {
             return reply.status(401).send({ error: "Incorrect username or password" });
         }
 
+        delete Buyer.Password;
         reply.send(Buyer);
     });
 
