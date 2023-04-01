@@ -387,6 +387,17 @@ module.exports = class Database {
             }
         });
     }
-    
+
+    async GetScripts(ProjectID) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = prisma.script.findMany({ where: { ProjectID: ProjectID } });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
 }
 

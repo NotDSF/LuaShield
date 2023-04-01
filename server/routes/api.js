@@ -407,6 +407,12 @@ async function routes(fastify, options) {
 
     fastify.get("/projects", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const Projects = await Database.GetProjects(request.APIKey);
+
+        for (Project of Projects) {
+            const Scripts = await Database.GetScripts(Project.id);
+            Project.Scripts = Scripts;
+        }
+
         reply.send(Projects);
     });
 }
