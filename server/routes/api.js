@@ -76,7 +76,7 @@ async function routes(fastify, options) {
             project_id: { type: "string" },
             username: { type: "string", maxLength: 20, minLength: 5 },
             expire: { type: "number" },
-            usage: { type: "number", minimum: 0 },
+            max_executions: { type: "number", minimum: 0 },
             whitelisted: { type: "boolean" },
             note: { type: "string", minLength: 3, maxLength: 20 }
         },
@@ -86,11 +86,11 @@ async function routes(fastify, options) {
     const UpdateUserSchema = {
         type: "object",
         properties: {
-            script_id: { type: "string" },
+            project_id: { type: "string" },
             username: { type: "string" },
             whitelisted: { type: "boolean" },
             expire: { type: "number" },
-            usage: { type: "number", minimum: 0 },
+            max_executions: { type: "number", minimum: 0 },
             note: { type: "string", minLength: 3, maxLength: 20 }
         },
         required: ["whitelisted", "script_id", "username"]
@@ -310,7 +310,7 @@ async function routes(fastify, options) {
         const ProjectID = request.body.project_id;
         const Username = request.body.username;
         const Expiry = request.body.expire;
-        const Usage = request.body.usage || 0;
+        const MaxExecutions = request.body.max_executions || 0;
         const Whitelisted = request.body.whitelisted;
         const Note = request.body.note;
 
@@ -329,7 +329,7 @@ async function routes(fastify, options) {
 
         const Key = crypto.randomUUID();
         try {
-            await Database.AddUser(Username, crypto.sha512(Key), ProjectID, Expiry, Usage, Whitelisted, Note);
+            await Database.AddUser(Username, crypto.sha512(Key), ProjectID, Expiry, MaxExecutions, Whitelisted, Note);
         } catch (er) {
             console.log(er);
             return reply.status(500).send({ error: "There was an issue creating this user" });
