@@ -74,26 +74,26 @@ async function routes(fastify, options) {
         type: "object",
         properties: {
             project_id: { type: "string" },
-            identifier: { type: "string", maxLength: 20, minLength: 5 },
+            username: { type: "string", maxLength: 20, minLength: 5 },
             expire: { type: "number" },
             usage: { type: "number", minimum: 0 },
             whitelisted: { type: "boolean" },
             note: { type: "string", minLength: 3, maxLength: 20 }
         },
-        required: ["project_id", "identifier", "whitelisted"]
+        required: ["project_id", "username", "whitelisted"]
     }
 
     const UpdateUserSchema = {
         type: "object",
         properties: {
             script_id: { type: "string" },
-            identifier: { type: "string" },
+            username: { type: "string" },
             whitelisted: { type: "boolean" },
             expire: { type: "number" },
             usage: { type: "number", minimum: 0 },
             note: { type: "string", minLength: 3, maxLength: 20 }
         },
-        required: ["whitelisted", "script_id", "identifier"]
+        required: ["whitelisted", "script_id", "username"]
     }
     
     const SignupSchema = {
@@ -138,10 +138,10 @@ async function routes(fastify, options) {
     const DeleteUserSchema = {
         type: "object",
         properties: {
-            identifier: { type: "string" },
+            username: { type: "string" },
             project_id: { type: "string" }
         },
-        required: ["project_id", "identifier"]
+        required: ["project_id", "username"]
     }
 
     fastify.get("/status", { websocket: false }, (request, reply) => reply.send({ online: true }))
@@ -308,7 +308,7 @@ async function routes(fastify, options) {
 
     fastify.post("/add_user", { schema: { headers: HeadersSchema, body: WhiteistUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ProjectID = request.body.project_id;
-        const Identifier = request.body.identifier;
+        const Username = request.body.username;
         const Expiry = request.body.expire;
         const Usage = request.body.usage || 0;
         const Whitelisted = request.body.whitelisted;
@@ -322,14 +322,14 @@ async function routes(fastify, options) {
             return reply.status(400).send({ error: "You don't own this project" });
         }
 
-        const Existing = await Database.GetUser(Identifier, ProjectID);
+        const Existing = await Database.GetUser(Username, ProjectID);
         if (Existing) {
-            return reply.status(400).send({ error: "A user with this identifier already exists" })
+            return reply.status(400).send({ error: "A user with this username already exists" })
         }
 
         const Key = crypto.randomUUID();
         try {
-            await Database.AddUser(Identifier, crypto.sha512(Key), ProjectID, Expiry, Usage, Whitelisted, Note);
+            await Database.AddUser(Username, crypto.sha512(Key), ProjectID, Expiry, Usage, Whitelisted, Note);
         } catch (er) {
             console.log(er);
             return reply.status(500).send({ error: "There was an issue creating this user" });
@@ -343,10 +343,10 @@ async function routes(fastify, options) {
 
     fastify.post("/delete_user", { schema: { headers: HeadersSchema, body: DeleteUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ProjectID = request.body.project_id;
-        const Identifier = request.body.identifier;
+        const Username = request.body.username;
 
         try {
-            await Database.DeleteUser(ProjectID, Identifier);
+            await Database.DeleteUser(ProjectID, Username);
             reply.send({ success: true });
         } catch (er) {
             reply.status(500).send({ error: "Something went wrong trying to delete this user" });
