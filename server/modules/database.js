@@ -128,7 +128,7 @@ module.exports = class Database {
         });
     }
 
-    async MakeProject(Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, Exploits) {
+    async MakeProject(Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, Exploits, APIKey) {
         return new Promise(async (resolve, reject) => {
             try {
                 const Result = prisma.project.create({
@@ -140,7 +140,8 @@ module.exports = class Database {
                         Online: true,
                         SynapseX: Exploits.synapse_x,
                         ScriptWare: Exploits.script_ware,
-                        SynapseV3: Exploits.synapse_v3
+                        SynapseV3: Exploits.synapse_v3,
+                        Owner: APIKey
                     }
                 });
                 resolve(Result);
@@ -374,5 +375,18 @@ module.exports = class Database {
             }
         });
     }
+
+    async GetProjects(APIKey) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = prisma.project.findMany({ where: { Owner: APIKey } });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
+    
 }
 

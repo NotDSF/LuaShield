@@ -39,6 +39,7 @@ model Project {
   SynapseX            Boolean
   ScriptWare          Boolean
   SynapseV3           Boolean
+  Owner               String
 }
 
 model Script {

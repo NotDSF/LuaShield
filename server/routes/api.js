@@ -228,7 +228,7 @@ async function routes(fastify, options) {
 
         let Information;
         try {
-            Information = await Database.MakeProject(Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, Exploits);
+            Information = await Database.MakeProject(Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, Exploits, request.APIKey);
             await Database.UpdateBuyerProjects(request.APIKey, Information.id);
         } catch (er) {
             return reply.status(500).send({ error: "There was an issue while creating this project" });
@@ -403,6 +403,11 @@ async function routes(fastify, options) {
         } catch (er) {
             return reply.status(500).send({ error: er.toString() });
         }
+    });
+
+    fastify.get("/projects", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const Projects = await Database.GetProjects(request.APIKey);
+        reply.send(Projects);
     });
 }
 
