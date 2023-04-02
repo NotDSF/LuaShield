@@ -392,6 +392,31 @@ async function routes(fastify, options) {
         }
     });
 
+    fastify.post("/reset_hwid", { schema: { headers: Headers, body: ResetKey }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const Username = request.body.username;
+        const ProjectID = request.body.project_id;
+
+        if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
+            return reply.status(400).send({ error: "You don't own this project" });
+        }
+
+        const Existing = await Database.GetUser(Username, ProjectID);
+        if (!Existing) {
+            return reply.status(400).send({ error: "This user doesn't exist" });
+        }
+
+        if (!Existing.HWID) {
+            return reply.status(400).send({ error: "User doesn't have an HWID linked" });
+        }
+
+        try {
+            let Info = await Database.ResetHWID(Existing.id);
+            reply.send(Info);
+        } catch (er) {
+            reply.status(500).send({ error: "There was an issue while resetting this users HWID" });
+        }
+    });
+
     fastify.post("/add_user", { schema: { headers: HeadersSchema, body: WhiteistUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ProjectID = request.body.project_id;
         const Username = request.body.username;

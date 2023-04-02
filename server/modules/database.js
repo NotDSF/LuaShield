@@ -451,5 +451,22 @@ module.exports = class Database {
             }
         })
     }
+
+    async ResetHWID(UserCollectionID) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.user.update({
+                    where: { id: UserCollectionID },
+                    data: {
+                        HWID: null
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
 }
 
