@@ -185,6 +185,14 @@ async function routes(fastify, options) {
         required: ["script_id", "project_id", "version"]
     }
 
+    const DeleteProject = {
+        type: "object",
+        properties: {
+            project_id: { type: "string" }
+        },
+        required: ["project_id"]
+    }
+
     fastify.get("/status", { websocket: false }, (request, reply) => reply.send({ online: true }))
 
     fastify.post("/signup", { schema: { body: SignupSchema }, websocket: false }, async (request, reply) => {
@@ -681,6 +689,29 @@ async function routes(fastify, options) {
         const Users = await Database.GetUsers(ProjectID);
         reply.send(Users);
     });
+
+    fastify.post("/delete_project", { schema: { headers: HeadersSchema, body: DeleteProject }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ProjectID = request.body.project_id;
+
+        const Project = await Database.GetProject(ProjectID);
+        if (!Project) {
+            return reply.status(400).send({ error: "This project doesn't exist" });
+        }
+
+        if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
+            return reply.status(400).send({ error: "This project isn't owned by you" });
+        }
+
+        try {
+            await Database.DeleteProject(ProjectID, request.APIKey);
+            reply.send({ success: true });
+        } catch (er) {
+            console.log(er);
+            return reply.status(500).send({ error: "There was an issue while trying to delete this project" })
+        }
+    });
+
+    
 }
 
 module.exports = routes;

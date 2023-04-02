@@ -503,5 +503,29 @@ module.exports = class Database {
             }
         });
     }
+
+    async DeleteProject(ProjectID, APIKey) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const DeleteScripts = prisma.script.deleteMany({ where: { ProjectID } });
+                const DeleteUsers = prisma.user.deleteMany({ where: { ProjectID } });
+                const DeleteProject = prisma.project.delete({ where: { id: ProjectID } });
+                
+                const Transaction = await prisma.$transaction([DeleteScripts, DeleteUsers, DeleteProject]);
+                const Buyer = await prisma.buyer.findUnique({ where: { APIKey } });
+    
+                await prisma.buyer.update({
+                    where: { APIKey },
+                    data: {
+                        Projects: Buyer.Projects.filter(a => a !== ProjectID)
+                    }
+                });
+                resolve();
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
 }
 
