@@ -320,7 +320,6 @@ async function routes(fastify, options) {
 		Data.Token = NewToken;
 
 		const Whitelist = await Database.GetWhitelistWithHWID(HWID);
-		console.log(Whitelist)
 		if (!Whitelist || !Whitelist.Whitelisted) {
 			Data.Token = crypto.randomstr(50);
 		}
