@@ -5,7 +5,7 @@ const macros = require("../macros/index");
 const path = require("path");
 const validator = require("email-validator");
 const { Luraph } = require("luraph");
-const { readFileSync, mkdirSync, writeFileSync, renameSync, existsSync } = require("fs");
+const { readFileSync, mkdirSync, writeFileSync, renameSync, existsSync, rmSync } = require("fs");
 
 const Database = new database();
 const luraph = new Luraph("ad355e4585dfea0baf319d453ef3a728e60fe3a789e96fbd84609fc997b79a00");
@@ -560,6 +560,40 @@ async function routes(fastify, options) {
             reply.send(Info);
         } catch (er) {
             reply.status(500).send({ error: "There was an issue while updating the script version" });
+        }
+    });
+
+    fastify.post("/delete_version", { schema: { headers: HeadersSchema, body: UpdateVersion }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ScriptID = request.body.script_id;
+        const ProjectID = request.body.project_id;
+        const Version = request.body.version;
+
+        if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
+            return reply.status(400).send({ error: "You don't own this project" });
+        }
+
+        const Script = await Database.GetScript(ProjectID, ScriptID);
+        if (!Script) {
+            return reply.status(400).send({ error: "This script doesn't exist" });
+        }
+
+        if (!Script.Versions.find(x => x === Version)) {
+            return reply.status(400).send({ error: "This version doesn't exist" });
+        }
+        
+        if (Script.Version === Version) {
+            return reply.status(400).send({ error: "You cannot delete the current version" });
+        }
+
+        try {
+            let Info = await Database.DeleteScriptVersion(ScriptID, Version);
+            if (existsSync(path.join(__dirname, `../../projects/${ProjectID}/${Script.id}/${Version}.lua`))) {
+                rmSync(path.join(__dirname, `../../projects/${ProjectID}/${Script.id}/${Version}.lua`))
+            }
+            reply.send(Info);
+        } catch (er) {
+            console.log(er);
+            reply.status(500).send({ error: "There was an issue trying to delete the script version" });
         }
     });
 

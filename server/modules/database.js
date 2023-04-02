@@ -485,5 +485,23 @@ module.exports = class Database {
             }
         });
     }
+
+    async DeleteScriptVersion(ScriptID, Version) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Current = await prisma.script.findUnique({ where: { id: ScriptID } });
+                const Result = await prisma.script.update({
+                    where: { id: ScriptID },
+                    data: {
+                        Versions: Current.Versions.filter(a => a !== Version)
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
 }
 
