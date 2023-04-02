@@ -5,7 +5,7 @@ const macros = require("../macros/index");
 const path = require("path");
 const validator = require("email-validator");
 const { Luraph } = require("luraph");
-const { readFileSync, mkdirSync, writeFileSync, renameSync, existsSync, rmSync } = require("fs");
+const { readFileSync, mkdirSync, writeFileSync, renameSync, existsSync, rmSync, rmdirSync } = require("fs");
 
 const Database = new database();
 const luraph = new Luraph("ad355e4585dfea0baf319d453ef3a728e60fe3a789e96fbd84609fc997b79a00");
@@ -191,6 +191,15 @@ async function routes(fastify, options) {
             project_id: { type: "string" }
         },
         required: ["project_id"]
+    }
+
+    const DeleteScript = {
+        type: "object",
+        properties: {
+            script_id: { type: "string" },
+            project_id: { type: "string" }
+        },
+        required: ["script_id", "project_id"]
     }
 
     fastify.get("/status", { websocket: false }, (request, reply) => reply.send({ online: true }))
@@ -703,6 +712,10 @@ async function routes(fastify, options) {
         }
 
         try {
+            if (existsSync(path.join(__dirname, `../../projects/${ProjectID}/`))) {
+                rmSync(path.join(__dirname, `../../projects/${ProjectID}/`), { force: true, recursive: true });
+            }
+
             await Database.DeleteProject(ProjectID, request.APIKey);
             reply.send({ success: true });
         } catch (er) {
@@ -711,7 +724,31 @@ async function routes(fastify, options) {
         }
     });
 
-    
+    fastify.post("/delete_script", { schema: { headers: HeadersSchema, body: DeleteScript }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ScriptID = request.body.script_id;
+        const ProjectID = request.body.project_id;
+
+        if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
+            return reply.status(400).send({ error: "You don't own this project" });
+        }
+
+        const Script = await Database.GetScript(ProjectID, ScriptID);
+        if (!Script) {
+            return reply.status(400).send({ error: "This script doesn't exist" });
+        }
+
+        try {
+            if (existsSync(path.join(__dirname, `../../projects/${ProjectID}/${ScriptID}`))) {
+                rmSync(path.join(__dirname, `../../projects/${ProjectID}/${ScriptID}`), { force: true, recursive: true });
+            }
+
+            await Database.DeleteScript(ScriptID);
+            reply.send({ success: true });
+        } catch (er) {
+            console.log(er);
+            return reply.status(500).send({ error: "There was an issue trying to delete this script" });
+        }
+    });
 }
 
 module.exports = routes;

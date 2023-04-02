@@ -527,5 +527,17 @@ module.exports = class Database {
             }
         });
     }
+
+    async DeleteScript(ScriptID) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.script.delete({ where: { id: ScriptID } });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        })
+    }
 }
 
