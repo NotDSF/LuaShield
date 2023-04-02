@@ -167,6 +167,7 @@ local getfenv  = getfenv;
 local Getrenv  = getrenv;
 local charTBL  = table.create(255);
 local BackupPrint = clonefunction(print);
+local Kick = clonefunction(game.Players.LocalPlayer.Kick);
 local MRandom;
 
 local IDENTIFIERS = {
@@ -369,16 +370,19 @@ do
 
   -- Has whitelist
   if Info.a ~= 1 and Info.d ~= 1 then
+    Kick(game.Players.LocalPlayer, LPH_ENCSTR("You aren't whitelisted to this project"));
     LPH_CRASH();
   end;
 
   -- Project supports exploit
   if Info.b ~= 0 then
+    Kick(game.Players.LocalPlayer, LPH_ENCSTR("This project doesn't support your exploit"));
     LPH_CRASH();
   end;
 
   -- Project offline
   if Info.c ~= 1 then
+    Kick(game.Players.LocalPlayer, LPH_ENCSTR("This project is offline"));
     LPH_CRASH();
   end;
 end;
