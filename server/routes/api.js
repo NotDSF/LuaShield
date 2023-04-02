@@ -337,7 +337,6 @@ async function routes(fastify, options) {
         try {
             Whitelist = await macros(Whitelist);
 
-            /*
             const { jobId } = await luraph.createNewJob("main", Whitelist, `${Info.id}.lua`, {
                 INTENSE_VM_STRUCTURE: true,
                 TARGET_VERSION: "Luau Handicapped",
@@ -353,10 +352,9 @@ async function routes(fastify, options) {
             }
 
             const { data } = await luraph.downloadResult(jobId);
-            */
 
             mkdirSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}`));
-            writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), Whitelist);
+            writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), data);
             Info.Loader = `https://luashield.com/s/${ProjectID}/${Info.id}`;
             reply.send(Info);
         } catch (er) {
@@ -492,7 +490,6 @@ async function routes(fastify, options) {
         const ScriptID = request.body.script_id;
         const ProjectID = request.body.project_id;
         let RawScript = request.body.script;
-        const Version = request.body.version;
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
             return reply.status(400).send({ error: "You don't own this project" });
@@ -529,7 +526,6 @@ async function routes(fastify, options) {
         try {
             Whitelist = await macros(Whitelist);
 
-            /*
             const { jobId } = await luraph.createNewJob("main", Whitelist, `${ScriptID}.lua`, {
                 INTENSE_VM_STRUCTURE: true,
                 TARGET_VERSION: "Luau Handicapped",
@@ -545,9 +541,8 @@ async function routes(fastify, options) {
             }
 
             const { data } = await luraph.downloadResult(jobId);
-            */
 
-            writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${ScriptInfo.id}/${GeneratedVersion}.lua`), Whitelist);
+            writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${ScriptInfo.id}/${GeneratedVersion}.lua`), data);
             reply.send(ScriptInfo);
         } catch (er) {
             return reply.status(500).send({ error: er.toString() });
