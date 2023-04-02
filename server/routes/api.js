@@ -175,6 +175,16 @@ async function routes(fastify, options) {
         required: ["project_id", "username"]
     }
 
+    const UpdateVersion = {
+        type: "object",
+        properties: {
+            script_id: { type: "string" },
+            project_id: { type: "string" },
+            version: { type: "string" }
+        },
+        required: ["script_id", "project_id", "version"]
+    }
+
     fastify.get("/status", { websocket: false }, (request, reply) => reply.send({ online: true }))
 
     fastify.post("/signup", { schema: { body: SignupSchema }, websocket: false }, async (request, reply) => {
@@ -465,6 +475,7 @@ async function routes(fastify, options) {
         const ScriptID = request.body.script_id;
         const ProjectID = request.body.project_id;
         let RawScript = request.body.script;
+        const Version = request.body.version;
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
             return reply.status(400).send({ error: "You don't own this project" });
@@ -472,7 +483,7 @@ async function routes(fastify, options) {
 
         const Script = await Database.GetScript(ProjectID, ScriptID);
         if (!Script) {
-            return reply.status(500).send({ error: "This script doesn't exist" });
+            return reply.status(400).send({ error: "This script doesn't exist" });
         }
 
         const GeneratedVersion = `v${crypto.randomUUID().substr(0, 5)}`;
@@ -523,6 +534,32 @@ async function routes(fastify, options) {
             reply.send(ScriptInfo);
         } catch (er) {
             return reply.status(500).send({ error: er.toString() });
+        }
+    });
+
+    fastify.post("/update_version", { schema: { headers: HeadersSchema, body: UpdateVersion }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ScriptID = request.body.script_id;
+        const ProjectID = request.body.project_id;
+        const Version = request.body.version;
+
+        if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
+            return reply.status(400).send({ error: "You don't own this project" });
+        }
+
+        const Script = await Database.GetScript(ProjectID, ScriptID);
+        if (!Script) {
+            return reply.status(400).send({ error: "This script doesn't exist" });
+        }
+
+        if (!Script.Versions.find(x => x === Version)) {
+            return reply.status(400).send({ error: "This version doesn't exist" });
+        }
+
+        try {
+            let Info = await Database.UpdateScriptVersion(Script.id, Version);
+            reply.send(Info);
+        } catch (er) {
+            reply.status(500).send({ error: "There was an issue while updating the script version" });
         }
     });
 

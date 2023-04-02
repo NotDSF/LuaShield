@@ -468,5 +468,22 @@ module.exports = class Database {
             }
         });
     }
+
+    async UpdateScriptVersion(ScriptID, Version) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.script.update({
+                    where: { id: ScriptID },
+                    data: {
+                        Version
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
 }
 
