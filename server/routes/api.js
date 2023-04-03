@@ -192,7 +192,32 @@ async function routes(fastify, options) {
         required: ["script_id"]
     }
 
-    fastify.get("/status", { websocket: false }, (request, reply) => reply.send({ online: true }))
+    const DeleteAccount = {
+        type: "object",
+        properties: {
+            password: { type: "string", minLength: 6, maxLength: 20 },
+            username: { type: "string", minLength: 3, maxLength: 10 }
+        },
+        required: ["password", "username"]
+    }
+
+    fastify.get("/stats", { websocket: false }, (request, reply) => {
+        let Stats = global.AuthenticationStats;
+        reply.send({
+            online: true,
+            authentication_speeds: {
+                synapse_x: {
+                    average: Stats.SynapseX.total / Stats.SynapseX.times
+                },
+                script_ware: {
+                    average: Stats.ScriptWare.total / Stats.ScriptWare.times
+                },
+                synapse_v3: {
+                    average: Stats.SynapseV3.total / Stats.SynapseV3.times
+                }
+            }
+        })
+    })
 
     fastify.post("/signup", { schema: { body: SignupSchema }, websocket: false }, async (request, reply) => {
         const Email = request.body.email;
@@ -247,6 +272,31 @@ async function routes(fastify, options) {
         Buyer.Subscription = Subscription;
         delete Buyer.Password;
         reply.send(Buyer);
+    });
+
+    fastify.post("/delete_account", { schema: { body: DeleteAccount }, websocket: false }, async (request, reply) => {
+        const Password = request.body.password;
+        const Username = request.body.username;
+        const Buyer = await Database.GetBuyer(Username, crypto.sha512(Password));
+
+        if (!Buyer) {
+            return reply.status(401).send({ error: "Incorrect username or password" });
+        }
+
+        try {
+            for (let project of Buyer.Projects) {
+                if (existsSync(path.join(__dirname, `../../projects/${project}`))) {
+                    rmSync(path.join(__dirname, `../../projects/${project}`), { force: true, recursive: true });
+                }
+                await Database.DeleteProject(project, Buyer.APIKey);
+            }
+
+            await Database.DeleteAccount(Buyer.Email);
+            reply.send({ success: true })
+        } catch (er) {
+            console.log(er);
+            reply.status(500).send({ error: "There was an issue while trying to delete your account" });
+        }
     });
 
     fastify.get("/valid_api_key", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, (request, reply) => reply.send({ success: true }));
@@ -351,6 +401,7 @@ async function routes(fastify, options) {
         try {
             Whitelist = await macros(Whitelist);
 
+            /*
             const { jobId } = await luraph.createNewJob("main", Whitelist, `${Info.id}.lua`, {
                 INTENSE_VM_STRUCTURE: true,
                 TARGET_VERSION: "Luau Handicapped",
@@ -368,9 +419,10 @@ async function routes(fastify, options) {
 
             const { data } = await luraph.downloadResult(jobId);
 
+            */
             await Database.SubscriptionIncrementObfuscationsCount(request.Subscription.SubscriptionID, 1);
             mkdirSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}`));
-            writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), data);
+            writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), Whitelist);
             Info.Loader = `https://luashield.com/s/${ProjectID}/${Info.id}`;
             reply.send(Info);
         } catch (er) {

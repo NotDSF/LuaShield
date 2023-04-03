@@ -669,5 +669,25 @@ module.exports = class Database {
             }
         })
     }
+
+    async DeleteAccount(Email) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const DeleteBuyer = prisma.buyer.delete({
+                    where: { Email }
+                });
+
+                const DeleteSubscription = prisma.subscription.delete({
+                    where: { Email }
+                });
+
+                const Transaction = await prisma.$transaction([DeleteBuyer, DeleteSubscription]);
+                resolve();
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
 }
 

@@ -259,6 +259,10 @@ async function routes(fastify, options) {
 			ProjectID: ProjectID
 		});
 
+		let Stats = global.AuthenticationStats[request.Exploit.replace(/ /g, "")];
+		Stats.times++;
+		Stats.total += Duration;
+		
 		reply.send(EncodeJSON({
 			error: false,
 			[crypto.randomstr(10)]: [

@@ -65,7 +65,7 @@ model Subscription {
   SubscriptionID  String @id @default(uuid()) @map("_id")
   Expire Int 
   Reset Int
-  Email String?
+  Email String? @unique
   Obfuscations Int?
   Projects Int?
   Scripts Int?
