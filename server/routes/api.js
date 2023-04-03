@@ -6,6 +6,7 @@ const path = require("path");
 const validator = require("email-validator");
 const { Luraph } = require("luraph");
 const { readFileSync, mkdirSync, writeFileSync, renameSync, existsSync, rmSync, rmdirSync } = require("fs");
+const { subscription_data } = require("../config.json");
 
 const Database = new database();
 const luraph = new Luraph("ad355e4585dfea0baf319d453ef3a728e60fe3a789e96fbd84609fc997b79a00");
@@ -27,18 +28,22 @@ async function routes(fastify, options) {
     async function AuthenticationHandler(request, reply) {
         const APIKey = request.headers["luashield-api-key"];
         const Buyer = await Database.GetBuyerFromAPIKey(APIKey);
+
         if (!Buyer) {
             return reply.status(401).send({ error: "Unauthorized" });
         }
 
-        if (!Buyer.BypassPayment) {
-            if (!Buyer.Subscription) {
-                return reply.status(402).send({ error: "You need to purchase a subscription" });
-            }
-
-            // IMPLEMENT STRIPE
+        const Subscription = await Database.GetSubscription(Buyer.SubscriptionID);
+        if (Date.now() > Subscription.Expire) {
+            return reply.status(402).send({ error: "Your subscription has expired" });
         }
 
+        // reset subscription obfuscations
+        if (Date.now() > Subscription.Reset) {
+            await Database.ResetSubscriptionObfuscations(Buyer.SubscriptionID);
+        }
+
+        request.Subscription = Subscription;
         request.APIKey = APIKey;
     }
 
@@ -73,7 +78,6 @@ async function routes(fastify, options) {
     const UpdateProjectSchema = {
         type: "object",
         properties: {
-            project_id: { type: "string" },
             name: { type: "string", maxLength: 20, minLength: 3 },
             success_webhook: { type: "string", maxLength: 150, minLength: 50 },
             blacklist_webhook: { type: "string", maxLength: 150, minLength: 50 },
@@ -88,34 +92,33 @@ async function routes(fastify, options) {
                 required: ["synapse_x", "script_ware", "synapse_v3"]
             },
             online: { type: "boolean" }
-        },
-        required: ["project_id"]
+        }
     }
 
     const WhiteistUserSchema = {
         type: "object",
         properties: {
-            project_id: { type: "string" },
             username: { type: "string", maxLength: 20, minLength: 5 },
             expire: { type: "number" },
             max_executions: { type: "number", minimum: 0 },
             whitelisted: { type: "boolean" },
-            note: { type: "string", minLength: 3, maxLength: 20 }
+            note: { type: "string", minLength: 3, maxLength: 20 },
+            discord_id: { type: "string", minLength: 10, maxLength: 20 }
         },
-        required: ["project_id", "username", "whitelisted"]
+        required: ["username", "whitelisted"]
     }
 
     const UpdateUserSchema = {
         type: "object",
         properties: {
-            project_id: { type: "string" },
             username: { type: "string" },
             whitelisted: { type: "boolean" },
             expire: { type: "number" },
             max_executions: { type: "number", minimum: 0 },
-            note: { type: "string", minLength: 3, maxLength: 20 }
+            note: { type: "string", minLength: 3, maxLength: 20 },
+            discord_id: { type: "string", minLength: 10, maxLength: 20 }
         },
-        required: ["whitelisted", "project_id", "username"]
+        required: ["whitelisted", "username"]
     }
     
     const SignupSchema = {
@@ -123,9 +126,10 @@ async function routes(fastify, options) {
         properties: {
             email: { type: "string" },
             password: { type: "string", minLength: 6, maxLength: 20 },
-            username: { type: "string", minLength: 3, maxLength: 10 }
+            username: { type: "string", minLength: 3, maxLength: 10 },
+            subscription_id: { type: "string" }
         },
-        required: ["email", "password", "username"]
+        required: ["email", "password", "username", "subscription_id"]
     }
 
     const LoginSchema = {
@@ -142,9 +146,8 @@ async function routes(fastify, options) {
         properties: {
             script: { type: "string" }, // base 64 encoded,
             script_id: { type: "string" },
-            project_id: { type: "string" }
         },
-        required: ["script", "script_id", "project_id"]
+        required: ["script", "script_id"]
     }
 
     const AddScriptSchema = {
@@ -152,54 +155,41 @@ async function routes(fastify, options) {
         properties: {
             name: { type: "string", maxLength: 20, minLength: 3 },
             script: { type: "string" }, // base 64 encoded,
-            project_id: { type: "string" }
         },
-        required: ["name", "script", "project_id"]
+        required: ["name", "script"]
     }
 
     const DeleteUserSchema = {
         type: "object",
         properties: {
             username: { type: "string" },
-            project_id: { type: "string" }
         },
-        required: ["project_id", "username"]
+        required: ["username"]
     }
 
     const ResetKey = {
         type: "object",
         properties: {
-            username: { type: "string" },
-            project_id: { type: "string" }
+            username: { type: "string" }
         },
-        required: ["project_id", "username"]
+        required: ["username"]
     }
 
     const UpdateVersion = {
         type: "object",
         properties: {
             script_id: { type: "string" },
-            project_id: { type: "string" },
             version: { type: "string" }
         },
-        required: ["script_id", "project_id", "version"]
-    }
-
-    const DeleteProject = {
-        type: "object",
-        properties: {
-            project_id: { type: "string" }
-        },
-        required: ["project_id"]
+        required: ["script_id", "version"]
     }
 
     const DeleteScript = {
         type: "object",
         properties: {
             script_id: { type: "string" },
-            project_id: { type: "string" }
         },
-        required: ["script_id", "project_id"]
+        required: ["script_id"]
     }
 
     fastify.get("/status", { websocket: false }, (request, reply) => reply.send({ online: true }))
@@ -208,6 +198,16 @@ async function routes(fastify, options) {
         const Email = request.body.email;
         const Password = request.body.password;
         const Username = request.body.username;
+        const SubscriptionID = request.body.subscription_id;
+
+        const Subscription = await Database.GetSubscription(SubscriptionID);
+        if (!Subscription) {
+            return reply.status(400).send({ error: "Invalid subscription id" });
+        }
+
+        if (Subscription.Email) {
+            return reply.status(400).send({ error: "This subscription is already being used by another user" });
+        }
 
         if (!validator.validate(Email)) {
             return reply.status(400).send({ error: "Email is invalid" });
@@ -227,7 +227,7 @@ async function routes(fastify, options) {
 
         const APIKey = crypto.randomUUID();
         try {
-            await Database.AddBuyer(Email, Username, crypto.sha512(Password), APIKey);
+            await Database.AddBuyer(Email, Username, crypto.sha512(Password), APIKey, SubscriptionID);
             return reply.send({ APIKey: APIKey });
         } catch (er) {
             return reply.status(500).send({ error: "There was an error with creating your account" });
@@ -243,13 +243,20 @@ async function routes(fastify, options) {
             return reply.status(401).send({ error: "Incorrect username or password" });
         }
 
+        const Subscription = await Database.GetSubscription(Buyer.SubscriptionID);
+        Buyer.Subscription = Subscription;
         delete Buyer.Password;
         reply.send(Buyer);
     });
 
     fastify.get("/valid_api_key", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, (request, reply) => reply.send({ success: true }));
 
-    fastify.post("/make_project", { schema: { headers: HeadersSchema, body: MakeProjectSchem }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    // Make Project
+    fastify.post("/projects", { schema: { headers: HeadersSchema, body: MakeProjectSchem }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        if (request.Subscription.Projects >= subscription_data.max_projects) {
+            return reply.status(400).send({ error: "You have reached your maximum amount of projects for your account" })
+        }
+        
         const Name = request.body.name;
         const Exploits = request.body.allowed_exploits;
 
@@ -287,6 +294,7 @@ async function routes(fastify, options) {
 
         let Information;
         try {
+            await Database.SubscriptionIncrementProjectCount(request.Subscription.SubscriptionID, 1);
             Information = await Database.MakeProject(Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, Exploits, request.APIKey);
             await Database.UpdateBuyerProjects(request.APIKey, Information.id);
         } catch (er) {
@@ -297,9 +305,14 @@ async function routes(fastify, options) {
         reply.send(Information);
     });
 
-    fastify.post("/add_script", { schema: { headers: HeadersSchema, body: AddScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    // Create Script
+    fastify.post("/projects/:id/scripts", { schema: { headers: HeadersSchema, body: AddScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        if (request.Subscription.Scripts >= subscription_data.max_scripts) {
+            return reply.status(400).send({ error: "You have reached your maximum amount of scripts for your account" })
+        }
+
         const ScriptName = request.body.name;
-        const ProjectID = request.body.project_id;
+        const ProjectID = request.params.id;
         let Script = request.body.script;
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
@@ -321,6 +334,7 @@ async function routes(fastify, options) {
         const GeneratedVersion = `v${crypto.randomUUID().substr(0, 5)}`;
         let Info;
         try {
+            await Database.SubscriptionIncrementScriptCount(request.Subscription.SubscriptionID, 1);
             Info = await Database.MakeScript(ProjectID, ScriptName, GeneratedVersion);
         } catch (er) {   
             console.log(er);
@@ -351,8 +365,10 @@ async function routes(fastify, options) {
                 return reply.status(500).send({ error: error });
             }
 
+
             const { data } = await luraph.downloadResult(jobId);
 
+            await Database.SubscriptionIncrementObfuscationsCount(request.Subscription.SubscriptionID, 1);
             mkdirSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}`));
             writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), data);
             Info.Loader = `https://luashield.com/s/${ProjectID}/${Info.id}`;
@@ -362,13 +378,15 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.post("/update_user", { schema: { headers: HeadersSchema, body: UpdateUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
-        const ProjectID = request.body.project_id;
+    // Update Existing User 
+    fastify.patch("/projects/:id/users", { schema: { headers: HeadersSchema, body: UpdateUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ProjectID = request.params.id;
         const Username = request.body.username;
         const Whitelisted = request.body.whitelisted;
         const Expiry = request.body.expire;
         const MaxExecutions = request.body.max_executions;
         const Note = request.body.note;
+        const DiscordID = request.body.discord_id;
 
         if (Expiry && new Date(Expiry * 1000).toString() == "Invalid Date" || Date.now() > (Expiry * 1000)) {
             return reply.status(400).send({ error: "Expire must be a valid unix epoch timestamp" });
@@ -383,21 +401,21 @@ async function routes(fastify, options) {
             return reply.status(400).send({ error: "This user doesn't exist" });
         }
 
-        if (!Expiry && !MaxExecutions && !Note && Whitelisted === Existing.Whitelisted) {
+        if (!Expiry && !MaxExecutions && !Note && !DiscordID && Whitelisted === Existing.Whitelisted) {
             return reply.send(Existing);
         }
 
         try {
-            let Info = await Database.UpdateUser(Existing.id, Expiry ? Expiry * 1000 : Expiry, MaxExecutions, Whitelisted, Note);
+            let Info = await Database.UpdateUser(Existing.id, Expiry ? Expiry * 1000 : Expiry, MaxExecutions, Whitelisted, Note, DiscordID);
             return reply.send(Info);
         } catch (er) {
             return reply.status(500).send({ error: "There was an issue while updating this user" });
         }
     });
 
-    fastify.post("/reset_key", { schema: { headers: Headers, body: ResetKey }, websocket: false,  preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.post("/projects/:id/users/reset_key", { schema: { headers: Headers, body: ResetKey }, websocket: false,  preHandler: AuthenticationHandler }, async (request, reply) => {
         const Username = request.body.username;
-        const ProjectID = request.body.project_id;
+        const ProjectID = request.params.id;
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
             return reply.status(400).send({ error: "You don't own this project" });
@@ -417,9 +435,9 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.post("/reset_hwid", { schema: { headers: Headers, body: ResetKey }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.post("/projects/:id/users/reset_hwid", { schema: { headers: Headers, body: ResetKey }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const Username = request.body.username;
-        const ProjectID = request.body.project_id;
+        const ProjectID = request.params.id;
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
             return reply.status(400).send({ error: "You don't own this project" });
@@ -442,13 +460,15 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.post("/add_user", { schema: { headers: HeadersSchema, body: WhiteistUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
-        const ProjectID = request.body.project_id;
+    // Create User
+    fastify.post("/projects/:id/users", { schema: { headers: HeadersSchema, body: WhiteistUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ProjectID = request.params.id;
         const Username = request.body.username;
         const Expiry = request.body.expire;
         const MaxExecutions = request.body.max_executions || 0;
         const Whitelisted = request.body.whitelisted;
         const Note = request.body.note;
+        const DiscordID = request.body.discord_id;
 
         if (Expiry && new Date(Expiry * 1000).toString() == "Invalid Date" || Date.now() > (Expiry * 1000)) {
             return reply.stauts(400).send({ error: "Expire must be a valid unix epoch timestamp" });
@@ -465,7 +485,7 @@ async function routes(fastify, options) {
 
         const Key = crypto.randomUUID();
         try {
-            let Info = await Database.AddUser(Username, crypto.sha512(Key), ProjectID, Expiry ? Expiry * 1000 : undefined, MaxExecutions, Whitelisted, Note);
+            let Info = await Database.AddUser(Username, crypto.sha512(Key), ProjectID, Expiry ? Expiry * 1000 : undefined, MaxExecutions, Whitelisted, Note, DiscordID);
             Info.Key = Key;
             reply.send(Info);
         } catch (er) {
@@ -474,8 +494,9 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.post("/delete_user", { schema: { headers: HeadersSchema, body: DeleteUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
-        const ProjectID = request.body.project_id;
+    // Delete User
+    fastify.delete("/projects/:id/users", { schema: { headers: HeadersSchema, body: DeleteUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ProjectID = request.params.id;
         const Username = request.body.username;
 
         try {
@@ -486,9 +507,10 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.post("/update_script", { schema: { headers: HeadersSchema, body: UpdateScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    // Update Script
+    fastify.patch("/projects/:id/scripts", { schema: { headers: HeadersSchema, body: UpdateScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
-        const ProjectID = request.body.project_id;
+        const ProjectID = request.params.id;
         let RawScript = request.body.script;
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
@@ -542,6 +564,7 @@ async function routes(fastify, options) {
 
             const { data } = await luraph.downloadResult(jobId);
 
+            await Database.SubscriptionIncrementObfuscationsCount(request.Subscription.SubscriptionID, 1);
             writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${ScriptInfo.id}/${GeneratedVersion}.lua`), data);
             reply.send(ScriptInfo);
         } catch (er) {
@@ -549,9 +572,10 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.post("/update_version", { schema: { headers: HeadersSchema, body: UpdateVersion }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    // Update Script Version
+    fastify.patch("/projects/:id/scripts/version", { schema: { headers: HeadersSchema, body: UpdateVersion }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
-        const ProjectID = request.body.project_id;
+        const ProjectID = request.params.id;
         const Version = request.body.version;
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
@@ -575,9 +599,10 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.post("/delete_version", { schema: { headers: HeadersSchema, body: UpdateVersion }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    // Delete Script Version
+    fastify.delete("/projects/:id/scripts/version", { schema: { headers: HeadersSchema, body: UpdateVersion }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
-        const ProjectID = request.body.project_id;
+        const ProjectID = request.params.id;
         const Version = request.body.version;
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
@@ -609,8 +634,9 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.post("/update_project", { schema: { headers: HeadersSchema, body: UpdateProjectSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
-        const ProjectID = request.body.project_id;
+    // Update Project
+    fastify.patch("/projects/:id", { schema: { headers: HeadersSchema, body: UpdateProjectSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ProjectID = request.params.id;
         const Name = request.body.name;
         let SuccessWebhook = request.body.success_webhook;
         let BlacklistWebhook = request.body.blacklist_webhook;
@@ -667,6 +693,7 @@ async function routes(fastify, options) {
         }
     });
     
+    // Get Projects
     fastify.get("/projects", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const Projects = await Database.GetProjects(request.APIKey);
 
@@ -678,7 +705,8 @@ async function routes(fastify, options) {
         reply.send(Projects);
     });
 
-    fastify.get("/:id/users", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    // Get Project Users
+    fastify.get("/projects/:id/users", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ProjectID = request.params.id;
         const Project = await Database.GetProject(ProjectID);
 
@@ -694,8 +722,9 @@ async function routes(fastify, options) {
         reply.send(Users);
     });
 
-    fastify.post("/delete_project", { schema: { headers: HeadersSchema, body: DeleteProject }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
-        const ProjectID = request.body.project_id;
+    // Delete Project
+    fastify.delete("/projects/:id", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ProjectID = request.params.id;
 
         const Project = await Database.GetProject(ProjectID);
         if (!Project) {
@@ -711,6 +740,7 @@ async function routes(fastify, options) {
                 rmSync(path.join(__dirname, `../../projects/${ProjectID}/`), { force: true, recursive: true });
             }
 
+            await Database.SubscriptionIncrementProjectCount(request.Subscription.SubscriptionID, -1);
             await Database.DeleteProject(ProjectID, request.APIKey);
             reply.send({ success: true });
         } catch (er) {
@@ -719,9 +749,10 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.post("/delete_script", { schema: { headers: HeadersSchema, body: DeleteScript }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    // Delete Script
+    fastify.delete("/projects/:id/scripts", { schema: { headers: HeadersSchema, body: DeleteScript }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
-        const ProjectID = request.body.project_id;
+        const ProjectID = request.params.id;
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
             return reply.status(400).send({ error: "You don't own this project" });
@@ -737,11 +768,75 @@ async function routes(fastify, options) {
                 rmSync(path.join(__dirname, `../../projects/${ProjectID}/${ScriptID}`), { force: true, recursive: true });
             }
 
+            await Database.SubscriptionIncrementScriptCount(request.Subscription.SubscriptionID, -1);
             await Database.DeleteScript(ScriptID);
             reply.send({ success: true });
         } catch (er) {
             console.log(er);
             return reply.status(500).send({ error: "There was an issue trying to delete this script" });
+        }
+    });
+
+
+    // internal shit
+
+    const CreateSubscription = {
+        type: "object",
+        properties: {
+            months: { type: "number" },
+            auth: { type: "string" }
+        }
+    }
+
+    fastify.post("/subscriptions", { schema: { body: CreateSubscription }, websocket: false }, async (request, reply) => {
+        const Months = request.body.months;
+        const Auth = request.body.auth;
+
+        if (Auth !== "d!DE!nEXz6!J9e6oN") {
+            return reply.status(401).send({ error: "Unauthorized" });
+        }
+
+        const Expire = new Date();
+        Expire.setMonth(Expire.getMonth() + Months);
+
+        const Reset = new Date();
+        Reset.setMonth(Reset.getMonth() + 1);
+
+        try {
+            let Info = await Database.CreateSubscription(Expire.getTime(), Reset.getTime());
+            reply.send(Info);
+        } catch (er) {
+            console.log(er);
+            reply.status(500).send({ error: "There was an issue while creating this subscription" });
+        }
+    });
+
+    fastify.patch("/subscriptions/:id", { schema: { body: CreateSubscription }, websocket: false }, async (request, reply) => {
+        const SubscriptionID = request.params.id;
+        const Months = request.body.months;
+        const Auth = request.body.auth;
+
+        const Subscription = await Database.GetSubscription(SubscriptionID);
+        if (!Subscription) {
+            return reply.status(401).send({ error: "This subscription doesn't exist" })
+        }
+
+        if (Auth !== "d!DE!nEXz6!J9e6oN") {
+            return reply.status(401).send({ error: "Unauthorized" });
+        }
+
+        const Expire = new Date();
+        Expire.setMonth(Expire.getMonth() + Months);
+
+        const Reset = new Date();
+        Reset.setMonth(Reset.getMonth() + 1);
+
+        try {
+            let Info = await Database.UpdateSubscription(Subscription.SubscriptionID, Expire.getTime(), Reset.getTime());
+            reply.send(Info);
+        } catch (er) {
+            console.log(er);
+            reply.status(500).send({ error: "There was an issue while updating this subscription" });
         }
     });
 }

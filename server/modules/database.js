@@ -195,7 +195,7 @@ module.exports = class Database {
         });
     }
 
-    async AddUser(Username, HashedKey, ProjectID, Expiry, Usage, Whitelisted, Note) {
+    async AddUser(Username, HashedKey, ProjectID, Expiry, Usage, Whitelisted, Note, DiscordID) {
         return new Promise(async (resolve, reject) => {
             try {
                 const CreateUser = prisma.user.create({
@@ -206,7 +206,8 @@ module.exports = class Database {
                         ExpireAt: Expiry,
                         MaxExecutions: Usage,
                         Whitelisted: Whitelisted,
-                        Note: Note
+                        Note: Note,
+                        DiscordID: DiscordID
                     }
                 });
 
@@ -260,18 +261,31 @@ module.exports = class Database {
         })
     }
 
-    async AddBuyer(Email, Username, Password, APIKey) {
+    async AddBuyer(Email, Username, Password, APIKey, SubscriptionID) {
         return new Promise(async (resolve, reject) => {
             try {
-                const Result = await prisma.buyer.create({
+                const CreateBuyer = prisma.buyer.create({
                     data: {
                         Email: Email,
                         Password: Password,
                         Username: Username,
-                        APIKey: APIKey
+                        APIKey: APIKey,
+                        SubscriptionID: SubscriptionID
                     }
                 })
-                resolve(Result);
+
+                const LinkSubscription = prisma.subscription.update({
+                    where: { SubscriptionID },
+                    data: {
+                        Email,
+                        Obfuscations: 0,
+                        Projects: 0,
+                        Scripts: 0
+                    }
+                });
+
+                const Transaction = await prisma.$transaction([CreateBuyer, LinkSubscription]);
+                resolve();
             } catch (er) {
                 console.log(er);
                 reject();
@@ -300,7 +314,7 @@ module.exports = class Database {
     }
 
     // first argument is the actual ID of the user object.
-    async UpdateUser(UserCollectionID, Expiry, Usage, Whitelisted, Note) {
+    async UpdateUser(UserCollectionID, Expiry, Usage, Whitelisted, Note, DiscordID) {
         return new Promise(async (resolve, reject) => {
             try {
                 const Result = await prisma.user.update({
@@ -309,7 +323,8 @@ module.exports = class Database {
                         ExpireAt: Expiry,
                         MaxExecutions: Usage,
                         Whitelisted: Whitelisted,
-                        Note: Note
+                        Note: Note,
+                        DiscordID: DiscordID
                     }
                 });
                 resolve(Result);
@@ -532,6 +547,121 @@ module.exports = class Database {
         return new Promise(async (resolve, reject) => {
             try {
                 const Result = await prisma.script.delete({ where: { id: ScriptID } });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        })
+    }
+
+    async CreateSubscription(Expire, Reset) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.subscription.create({
+                    data: {
+                        Expire,
+                        Reset
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        }); 
+    }
+
+    async GetSubscription(SubscriptionID) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.subscription.findUnique({ where: { SubscriptionID } });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
+
+    async ResetSubscriptionObfuscations(SubscriptionID) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.subscription.update({
+                    where: { SubscriptionID },
+                    data: {
+                        Obfuscations: 0
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
+
+    async SubscriptionIncrementProjectCount(SubscriptionID, Amount) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.subscription.update({
+                    where: { SubscriptionID },
+                    data: {
+                        Projects: { increment: Amount }
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
+
+    async SubscriptionIncrementScriptCount(SubscriptionID, Amount) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.subscription.update({
+                    where: { SubscriptionID },
+                    data: {
+                        Scripts: { increment: Amount }
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
+
+    async SubscriptionIncrementObfuscationsCount(SubscriptionID, Amount) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.subscription.update({
+                    where: { SubscriptionID },
+                    data: {
+                        Obfuscations: { increment: Amount }
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
+
+    async UpdateSubscription(SubscriptionID, Expire, Reset) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.subscription.update({
+                    where: { SubscriptionID },
+                    data: {
+                        Expire,
+                        Reset
+                    }
+                });
                 resolve(Result);
             } catch (er) {
                 console.log(er);

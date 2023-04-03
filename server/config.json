@@ -22,5 +22,10 @@
         "boolean": 88,
         "specialnumber": 39
     },
+    "subscription_data": {
+        "max_projects": 20,
+        "max_scripts": 100,
+        "max_obfuscations": 3000
+    },
     "discord": "https://discord.gg/X6YbZTdMee"
 }

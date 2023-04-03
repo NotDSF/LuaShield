@@ -24,6 +24,7 @@ model User {
   ExpireAt      Int?
   MaxExecutions Int      @default(0)
   Note          String   @default("")
+  DiscordID     String?
 }
 
 model Project {
@@ -51,14 +52,21 @@ model Script {
 }
 
 model Buyer {
-  id            String   @id @default(uuid()) @map("_id")
-  Projects      String[] @default([])
-  Email         String   @unique
-  Password      String   @unique
-  APIKey        String   @unique
-  Username      String   @unique
-  Subscription  String?
-  CustomerID    String?
-  BypassPayment Boolean?
-  DiscordID     String   @unique @default("")
+  id                 String   @id @default(uuid()) @map("_id")
+  Projects           String[] @default([])
+  Email              String   @unique
+  Password           String   @unique
+  APIKey             String   @unique
+  Username           String   @unique
+  SubscriptionID     String
+}
+
+model Subscription {
+  SubscriptionID  String @id @default(uuid()) @map("_id")
+  Expire Int 
+  Reset Int
+  Email String?
+  Obfuscations Int?
+  Projects Int?
+  Scripts Int?
 }
