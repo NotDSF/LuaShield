@@ -689,5 +689,22 @@ module.exports = class Database {
             }
         });
     }
+
+    async ResetPassword(APIKey, Password) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.buyer.update({
+                    where: { APIKey },
+                    data: {
+                        Password: Password
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
 }
 

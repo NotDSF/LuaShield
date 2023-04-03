@@ -201,6 +201,14 @@ async function routes(fastify, options) {
         required: ["password", "username"]
     }
 
+    const ResetPassword = {
+        type: "object",
+        properties: {
+            password: { type: "string", minLength: 6, maxLength: 20 }
+        },
+        required: ["password"]
+    }
+
     fastify.get("/stats", { websocket: false }, (request, reply) => {
         let Stats = global.AuthenticationStats;
         reply.send({
@@ -296,6 +304,27 @@ async function routes(fastify, options) {
         } catch (er) {
             console.log(er);
             reply.status(500).send({ error: "There was an issue while trying to delete your account" });
+        }
+    });
+
+    fastify.post("/change_password", { schema: { headers: HeadersSchema, body: ResetPassword }, websocket: false }, async (request, reply) => {
+        const Buyer = await Database.GetBuyerFromAPIKey(request.headers["luashield-api-key"]);
+        const Password = request.body.password;
+        
+        if (!Buyer) {
+            return reply.status(401).send({ error: "Unauthorized" });
+        }
+
+        if (!Password.match(/[A-Z]+/)) {
+            return reply.status(400).send({ error: "Your password must include at least one uppercase letter" })
+        }
+
+        try {
+            await Database.ResetPassword(Buyer.APIKey, crypto.sha512(Password));
+            reply.send({ success: true })
+        } catch (er) {
+            console.log(er);
+            return reply.status(500).send({ error: "There was an issue while trying to reset your password" })
         }
     });
 
