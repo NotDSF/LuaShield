@@ -401,7 +401,6 @@ async function routes(fastify, options) {
         try {
             Whitelist = await macros(Whitelist);
 
-            /*
             const { jobId } = await luraph.createNewJob("main", Whitelist, `${Info.id}.lua`, {
                 INTENSE_VM_STRUCTURE: true,
                 TARGET_VERSION: "Luau Handicapped",
@@ -419,10 +418,9 @@ async function routes(fastify, options) {
 
             const { data } = await luraph.downloadResult(jobId);
 
-            */
             await Database.SubscriptionIncrementObfuscationsCount(request.Subscription.SubscriptionID, 1);
             mkdirSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}`));
-            writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), Whitelist);
+            writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), data);
             Info.Loader = `https://luashield.com/s/${ProjectID}/${Info.id}`;
             reply.send(Info);
         } catch (er) {
