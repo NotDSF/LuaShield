@@ -706,5 +706,62 @@ module.exports = class Database {
             }
         });
     }
+
+    async GetBuyers() {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.buyer.findMany();
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
+
+    async GetSubscriptions() {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.subscription.findMany();
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        })
+    }
+
+    async CreateAdminBuyer(Email, Username, Password, APIKey, SubscriptionID) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const CreateBuyer = prisma.buyer.create({
+                    data: {
+                        Email: Email,
+                        Password: Password,
+                        Username: Username,
+                        APIKey: APIKey,
+                        SubscriptionID: SubscriptionID,
+                        Admin: true
+                    }
+                })
+
+                const LinkSubscription = prisma.subscription.update({
+                    where: { SubscriptionID },
+                    data: {
+                        Email,
+                        Obfuscations: 0,
+                        Projects: 0,
+                        Scripts: 0
+                    }
+                });
+
+                const Transaction = await prisma.$transaction([CreateBuyer, LinkSubscription]);
+                resolve(Transaction[0]);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        })
+    }
 }
 

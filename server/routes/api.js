@@ -5,11 +5,11 @@ const macros = require("../macros/index");
 const path = require("path");
 const validator = require("email-validator");
 const { Luraph } = require("luraph");
-const { readFileSync, mkdirSync, writeFileSync, renameSync, existsSync, rmSync, rmdirSync } = require("fs");
+const { readFileSync, mkdirSync, writeFileSync, existsSync, rmSync } = require("fs");
 const { subscription_data } = require("../config.json");
 
 const Database = new database();
-const luraph = new Luraph("ad355e4585dfea0baf319d453ef3a728e60fe3a789e96fbd84609fc997b79a00");
+const luraph = new Luraph(process.env.LURAPH_KEY);
 
 function Regex(expression) {
     return new RegExp(expression.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), "g");
@@ -45,6 +45,7 @@ async function routes(fastify, options) {
 
         request.Subscription = Subscription;
         request.APIKey = APIKey;
+        request.Admin = Buyer.Admin;
     }
 
     const HeadersSchema = {
@@ -857,23 +858,54 @@ async function routes(fastify, options) {
     });
 
 
-    // internal shit
+    // admin shit
 
     const CreateSubscription = {
         type: "object",
         properties: {
             months: { type: "number" },
             auth: { type: "string" }
-        }
+        },
+        required: ["months"]
     }
 
-    fastify.post("/subscriptions", { schema: { body: CreateSubscription }, websocket: false }, async (request, reply) => {
-        const Months = request.body.months;
-        const Auth = request.body.auth;
+    const SetAdmin = {
+        type: "object",
+        properties: {
+            username: { type: "string" },
+            auth: { type: "string" },
+            email: { type: "string" },
+            password: { type: "string" }
+        },
+        required: ["username", "auth", "email", "password"]
+    }
 
-        if (Auth !== "d!DE!nEXz6!J9e6oN") {
-            return reply.status(401).send({ error: "Unauthorized" });
+
+    fastify.get("/admin/subscriptions", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        if (!request.Admin) {
+            return reply.status(401).send({ error: "Your account needs admin privileges" });
         }
+
+        let Info = await Database.GetSubscriptions();
+        reply.send(Info);
+    });
+
+    fastify.get("/admin/buyers", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        if (!request.Admin) {
+            return reply.status(401).send({ error: "Your account needs admin privileges" });
+        }
+
+        let Info = await Database.GetBuyers();
+        reply.send(Info);
+    });
+
+    // Create Subscription
+    fastify.post("/admin/subscriptions", { schema: { headers: HeadersSchema, body: CreateSubscription }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        if (!request.Admin) {
+            return reply.status(401).send({ error: "Your account needs admin privileges" });
+        }
+
+        const Months = request.body.months;
 
         const Expire = new Date();
         Expire.setMonth(Expire.getMonth() + Months);
@@ -890,18 +922,18 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.patch("/subscriptions/:id", { schema: { body: CreateSubscription }, websocket: false }, async (request, reply) => {
+    // Update Subscriotion
+    fastify.patch("/admin/subscriptions/:id", { schema: { headers: HeadersSchema, body: CreateSubscription }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        if (!request.Admin) {
+            return reply.status(401).send({ error: "Your account needs admin privileges" });
+        }
+
         const SubscriptionID = request.params.id;
         const Months = request.body.months;
-        const Auth = request.body.auth;
 
         const Subscription = await Database.GetSubscription(SubscriptionID);
         if (!Subscription) {
             return reply.status(401).send({ error: "This subscription doesn't exist" })
-        }
-
-        if (Auth !== "d!DE!nEXz6!J9e6oN") {
-            return reply.status(401).send({ error: "Unauthorized" });
         }
 
         const Expire = new Date();
@@ -916,6 +948,43 @@ async function routes(fastify, options) {
         } catch (er) {
             console.log(er);
             reply.status(500).send({ error: "There was an issue while updating this subscription" });
+        }
+    });
+
+    // internal endpoint
+
+    fastify.post("/create_admin", { schema: { body: SetAdmin }, websocket: false }, async (request, reply) => {
+        const Username = request.body.username;
+        const Email = request.body.email;
+        const Password = request.body.password;
+        const Auth = request.body.auth;
+
+        if (Auth !== process.env.ADMIN_KEY) {
+            return reply.status(401).send({ error: "Unauthorized" });
+        }
+
+        if (await Database.GetBuyerFromEmail(Email)) {
+            return reply.status(400).send({ error: "This email is already registered to another user" });
+        }
+
+        if (await Database.GetBuyerFromUsername(Username)) {
+            return reply.status(400).send({ error: "This username is already associated with another account" })
+        }
+
+        const Expire = new Date();
+        Expire.setMonth(Expire.getMonth() + 200);
+
+        const Reset = new Date();
+        Reset.setMonth(Reset.getMonth() + 1);
+
+        const APIKey = crypto.randomUUID();
+        try {
+            let Info = await Database.CreateSubscription(Expire.getTime(), Reset.getTime());
+            let Buyer = await Database.CreateAdminBuyer(Email, Username, crypto.sha512(Password), APIKey, Info.SubscriptionID);
+            reply.send(Buyer);
+        } catch (er) {
+            console.log(er);
+            return reply.status(500).send({ error: "There was a problem while updating this user" })
         }
     });
 }

@@ -59,6 +59,7 @@ model Buyer {
   APIKey             String   @unique
   Username           String   @unique
   SubscriptionID     String
+  Admin              Boolean @default(false)
 }
 
 model Subscription {

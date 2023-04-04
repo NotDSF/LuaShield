@@ -1,6 +1,7 @@
 const { existsSync, mkdirSync, readFileSync } = require("fs");
 const fetch = require("node-fetch");
 const path = require("path");
+require("dotenv").config()
 
 let options = {
     logger: true
@@ -33,7 +34,6 @@ global.AuthenticationStats = {
         total: 0,
         times: 0
     }
-
 }
 
 fastify.register(require("./routes/auth"), { prefix: "/auth" });

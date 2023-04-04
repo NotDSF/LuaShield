@@ -13,6 +13,7 @@
     "@fastify/websocket": "^7.1.2",
     "@prisma/client": "^4.11.0",
     "@prisma/extension-accelerate": "^0.1.1",
+    "dotenv": "^16.0.3",
     "email-validator": "^2.0.4",
     "fastify": "^4.13.0",
     "fastify-websocket": "^4.3.0",
