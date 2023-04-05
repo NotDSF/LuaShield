@@ -60,6 +60,7 @@ model Buyer {
   Username           String   @unique
   SubscriptionID     String
   Admin              Boolean @default(false)
+  RegisteredAt       Int
 }
 
 model Subscription {

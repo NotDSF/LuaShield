@@ -270,7 +270,8 @@ module.exports = class Database {
                         Password: Password,
                         Username: Username,
                         APIKey: APIKey,
-                        SubscriptionID: SubscriptionID
+                        SubscriptionID: SubscriptionID,
+                        RegisteredAt: Date.now()
                     }
                 })
 
@@ -741,7 +742,8 @@ module.exports = class Database {
                         Username: Username,
                         APIKey: APIKey,
                         SubscriptionID: SubscriptionID,
-                        Admin: true
+                        Admin: true,
+                        RegisteredAt: Date.now()
                     }
                 })
 
