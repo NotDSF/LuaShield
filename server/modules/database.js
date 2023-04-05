@@ -763,5 +763,16 @@ module.exports = class Database {
             }
         })
     }
+
+    async GetAdminStats() {
+        return new Promise(async (resolve, reject) => {
+            resolve({
+                Projects: await prisma.project.count(),
+                Scripts: await prisma.script.count(),
+                Users: await prisma.user.count(),
+                Buyers: await prisma.buyer.count()
+            });
+        });
+    }
 }
 

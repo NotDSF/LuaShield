@@ -882,6 +882,22 @@ async function routes(fastify, options) {
         required: ["username", "auth", "email", "password"]
     }
 
+    const DeleteBuyer = {
+        type: "object",
+        properties: {
+            email: { type: "string" }
+        },
+        required: ["email"]
+    }
+
+    fastify.get("/admin/stats", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        if (!request.Admin) {
+            return reply.status(401).send({ error: "Your account needs admin privileges" });
+        }
+
+        let Info = await Database.GetAdminStats();
+        reply.send(Info);
+    })
 
     fastify.get("/admin/subscriptions", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         if (!request.Admin) {
@@ -899,6 +915,37 @@ async function routes(fastify, options) {
 
         let Info = await Database.GetBuyers();
         reply.send(Info);
+    });
+
+    fastify.delete("/admin/buyers", { schema: { headers: HeadersSchema, body: DeleteBuyer }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        if (!request.Admin) {
+            return reply.status(401).send({ error: "Your account needs admin privileges" });
+        }
+
+        const Email = request.body.email;
+        const Buyer = await Database.GetBuyerFromEmail(Email);
+
+        if (!Buyer) {
+            return reply.status(400).send({ error: "This buyer doesn't exist" });
+        }
+
+        if (Buyer.Admin) {
+            return reply.status(400).send({ error: "You cannot delete an admin account" });
+        }
+
+        try {
+            for (let project of Buyer.Projects) {
+                if (existsSync(path.join(__dirname, `../../projects/${project}`))) {
+                    rmSync(path.join(__dirname, `../../projects/${project}`), { force: true, recursive: true });
+                }
+                await Database.DeleteProject(project, Buyer.APIKey);
+            }
+
+            await Database.DeleteAccount(Email);
+            reply.send({ success: true });
+        } catch (er) {
+            reply.status(500).send({ error: "There was an issue while trying to delete this buyer" });
+        }
     });
 
     // Create Subscription
