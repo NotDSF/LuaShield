@@ -224,7 +224,8 @@ async function routes(fastify, options) {
                 synapse_v3: {
                     average: Stats.SynapseV3.total / Stats.SynapseV3.times
                 }
-            }
+            },
+            average_authentication: Stats.total / Stats.times
         })
     })
 
@@ -426,6 +427,7 @@ async function routes(fastify, options) {
             .replace("local function LPH_CRASH() error(\"Blocked crash\"); end;", "")
             .replace("PROJECT_ID", ProjectID)
             .replace("SCRIPT_ID", Info.id)
+            .replace("SCRIPT_VERSION", GeneratedVersion)
             .replace("--_SCRIPT_--", Script);
 
         try {
@@ -602,20 +604,19 @@ async function routes(fastify, options) {
             return reply.status(400).send({ error: "This script doesn't exist" });
         }
 
-        const GeneratedVersion = `v${crypto.randomUUID().substr(0, 5)}`;
-        let ScriptInfo;
-
-        try {
-            ScriptInfo = await Database.UpdateScript(ScriptID, GeneratedVersion);
-        } catch (er) {
-            return reply.status(500).send({ error: "There was an issue with updating this script" });
-        }
-
         RawScript = Buffer.from(RawScript, "base64").toString();
         try {
             RawScript = await macros(RawScript, true);
         } catch (er) {
             return reply.status(500).send({ error: er.toString() });
+        }
+
+        const GeneratedVersion = `v${crypto.randomUUID().substr(0, 5)}`;
+        let ScriptInfo;
+        try {
+            ScriptInfo = await Database.UpdateScript(ScriptID, GeneratedVersion);
+        } catch (er) {
+            return reply.status(500).send({ error: "There was an issue with updating this script" });
         }
         
         let Whitelist = readFileSync(path.join(__dirname, "../../client/client.lua"), "utf-8")
@@ -623,6 +624,7 @@ async function routes(fastify, options) {
             .replace("local function LPH_CRASH() error(\"Blocked crash\"); end;", "")
             .replace("PROJECT_ID", ProjectID)
             .replace("SCRIPT_ID", ScriptInfo.id)
+            .replace("SCRIPT_VERSION", GeneratedVersion)
             .replace("--_SCRIPT_--", RawScript);
 
         try {

@@ -11,6 +11,7 @@ local function LS_NUMENC(...) return ... end;
 local TimeNow = tick();
 local ProjectID = LPH_ENCSTR("PROJECT_ID");
 local ScriptIdentifier = LPH_ENCSTR("SCRIPT_ID");
+local ScriptVersion = LPH_ENCSTR("SCRIPT_VERSION");
 local LuaShield = 1;
 
 if getgenv().LuaShield then return end; -- Stops retards executing twice
@@ -357,8 +358,9 @@ do
     Url = LPH_ENCSTR("http://localhost/auth/info"),
     Method = "GET",
     Headers = {
-      ["project"] = ProjectID,
-      ["key"] = rawget(getfenv(0), "Key") or ""
+      ["nptxxjzypm"] = ProjectID,
+      ["yslragqbrg"] = ScriptIdentifier,
+      ["ngdydrcqzg"] = rawget(getfenv(0), "Key") or ""
     }
   });
 
@@ -368,7 +370,7 @@ do
 
   local Info = JSONDecode(Sanity.Body);
 
-  -- Has whitelist
+  -- Does not have whitelist
   if Info.a ~= 1 and Info.d ~= 1 then
     Kick(game.Players.LocalPlayer, LPH_ENCSTR("You aren't whitelisted to this project"));
     LPH_CRASH();
@@ -383,6 +385,17 @@ do
   -- Project offline
   if Info.c ~= 1 then
     Kick(game.Players.LocalPlayer, LPH_ENCSTR("This project is offline"));
+    LPH_CRASH();
+  end;
+
+  if Info.e ~= ScriptVersion then
+    Kick(game.Players.LocalPlayer, LPH_ENCSTR("This script is outdated"));
+    LPH_CRASH();
+  end;
+
+  -- User already has ran
+  if Info.f ~= 0 then
+    Kick(game.Players.LocalPlayer, LPH_ENCSTR("You already have an ongoing connection to the LuaShield servers"));
     LPH_CRASH();
   end;
 end;

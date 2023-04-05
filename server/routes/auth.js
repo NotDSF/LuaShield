@@ -12,6 +12,13 @@ let WhitelistJSXToken = new Map();
 
 const PublicKey = Buffer.from("qgq26x4+4FWdLzRpGZytZfEQJlOeusryQC8ppC2BEVA=", "base64");
 const Database = new database();
+let WhitelistTracepath = new Map();
+
+function CheckTracepath(HWID, Name) {
+	let Trace = WhitelistTracepath.get(HWID);
+	if (!Trace || !Trace[Name]) return;
+	return true;
+}
 
 /**
  * @param {import("fastify").FastifyInstance} fastify  Encapsulated Fastify Instance
@@ -81,29 +88,47 @@ async function routes(fastify, options) {
 	});
 
 	fastify.get("/info", async (request, reply) => {
-		const ProjectID = request.headers.project;
-		const Key = request.headers.key;
+		if (!request.Exploit) return;
 
-		if (!Key) return reply.status(500);
-		if (!ProjectID) return reply.status(500);
+		if (!CheckTracepath(request.HWID, "version")) return reply.status(500);
+		WhitelistTracepath.set(request.HWID, { info: true });
+
+		const ProjectID = request.headers[config.headers_auth_info.projectid];
+		const ScriptID = request.headers[config.headers_auth_info.scriptid];
+		const Key = request.headers[config.headers_auth_info.key];
+
+		if (!ScriptID && !Key && !ProjectID) {
+			return reply.status(500);
+		}
 
 		const Project = await Database.GetProject(ProjectID);
-		if (!Project) return reply.status(500);
+		const Script = await Database.GetScript(ProjectID, ScriptID);
+
+		if (!Project && !Script) return reply.status(500);
 
 		const WhitelistHWID = await Database.GetWhitelistWithHWID(request.HWID);
 		const WhitelistKey = await Database.GetWhitelist(crypto.sha512(Key));
+		const JSXToken = WhitelistJSXToken.get(request.ip);
+		if (JSXToken) {
+			WhitelistJSXToken.delete(request.ip);
+		}
 
 		reply.send(EncodeJSON({
 			a: WhitelistHWID ? 1 : 0,
 			d: WhitelistKey ? 1 : 0,
 			b: +(!Project.SynapseX && request.Exploit === "Synapse X" || !Project.ScriptWare && request.Exploit === "Script Ware" || !Project.SynapseV3 && request.Exploit === "Synapse V3"),
-			c: Project.Online ? 1 : 0
+			c: Project.Online ? 1 : 0,
+			e: Script.Version,
+			f: JSXToken ? 1 : 0
 		}))
 	})
 
 	fastify.get(`/${config.endpointsname}`, (request, reply) => {
 		if (!request.Exploit) return;
 		
+		if (!CheckTracepath(request.HWID, "info")) return reply.status(500);
+		WhitelistTracepath.set(request.HWID, { endpoints: true });
+
 		reply.send(EncodeJSON({
 			1: endpoints.Vendor,
 			2: {
@@ -116,11 +141,18 @@ async function routes(fastify, options) {
 	fastify.get(`/${endpoints.Info.Flags}`, (request, reply) => {
 		if (!request.Exploit) return;
 
+		if (!CheckTracepath(request.HWID, "endpoints")) return reply.status(500);
+		WhitelistTracepath.set(request.HWID, { flags: true });
+
 		const Flag = flag.generate();
 		reply.send(EncodeJSON(Flag, request.HWID));
 	});
 
 	fastify.get(`/${endpoints.Info.WhitelistMain}`, async (request, reply) => {
+		if (!request.Exploit) return reply.status(500);
+		if (!CheckTracepath(request.HWID, "flags")) return reply.status(500);
+		WhitelistTracepath.delete(request.HWID);
+
 		const Fingerprint = request.headers[config.headers.fingerprint];
 		const NumberID = request.headers[config.headers.numberid];
 		const ServerID = request.headers[config.headers.serverid];
@@ -214,7 +246,7 @@ async function routes(fastify, options) {
 				return reply.status(502)
 			}
 
-			if (Whitelist.MaxExecutions !== 0 && Whitelit.Executions >= Whitelist.MaxExecutions) {
+			if (Whitelist.MaxExecutions !== 0 && Whitelist.Executions >= Whitelist.MaxExecutions) {
 				await webhooks.Unauthorized(Project.UnauthorizedWebhook, {
 					IP: request.ip,
 					Reason: `This user has reached their maximum amount of executions (${Whitelist.MaxExecutions}), username: \`${Whitelist.Username}\``
@@ -262,7 +294,11 @@ async function routes(fastify, options) {
 		let Stats = global.AuthenticationStats[request.Exploit.replace(/ /g, "")];
 		Stats.times++;
 		Stats.total += Duration;
-		
+
+		let GlobalStats = global.AuthenticationStats;
+		GlobalStats.times++;
+		GlobalStats.total += Duration;
+
 		reply.send(EncodeJSON({
 			error: false,
 			[crypto.randomstr(10)]: [
@@ -299,7 +335,14 @@ async function routes(fastify, options) {
 		})
 	});
 
-	fastify.get(`/version`, (request, reply) => reply.send(config.version));
+	fastify.get(`/version`, (request, reply) => {
+		if (!request.Exploit) return;
+		WhitelistTracepath.set(request.HWID, {
+			version: true
+		});
+
+		reply.send(config.version)
+	});
 
 	fastify.get("/v/:id", async (request, reply) => {
 		const Token = request.params.id;

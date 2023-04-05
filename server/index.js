@@ -4,7 +4,7 @@ const path = require("path");
 require("dotenv").config()
 
 let options = {
-    logger: true
+    logger: process.platform === "win32"
 }
 
 if (process.platform !== "win32") {
@@ -33,7 +33,9 @@ global.AuthenticationStats = {
     SynapseV3: {
         total: 0,
         times: 0
-    }
+    },
+    total: 0,
+    times: 0
 }
 
 fastify.register(require("./routes/auth"), { prefix: "/auth" });
