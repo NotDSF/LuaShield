@@ -824,6 +824,22 @@ async function routes(fastify, options) {
         reply.send(Users);
     });
 
+    // Get Project By Id
+    fastify.get("/projects/:id", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const ProjectID = request.params.id;
+        const Project = await Database.GetProject(ProjectID);
+
+        if (!Project) {
+            return reply.status(400).send({ error: "This project doesn't exist" });
+        }
+
+        if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
+            return reply.status(400).send({ error: "You don't own this project" });
+        }
+
+        reply.send(Project);
+    });
+
     // Delete Project
     fastify.delete("/projects/:id", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ProjectID = request.params.id;
