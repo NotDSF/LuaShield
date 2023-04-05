@@ -59,7 +59,7 @@ async function routes(fastify, options) {
     const MakeProjectSchem = {
         type: "object",
         properties: {
-            name: { type: "string", maxLength: 20, minLength: 3 },
+            name: { type: "string", maxLength: 30, minLength: 3 },
             success_webhook: { type: "string", maxLength: 150, minLength: 50 },
             blacklist_webhook: { type: "string", maxLength: 150, minLength: 50 },
             unauthorized_webhook: { type: "string", maxLength: 150, minLength: 50 },
@@ -79,7 +79,7 @@ async function routes(fastify, options) {
     const UpdateProjectSchema = {
         type: "object",
         properties: {
-            name: { type: "string", maxLength: 20, minLength: 3 },
+            name: { type: "string", maxLength: 30, minLength: 3 },
             success_webhook: { type: "string", maxLength: 150, minLength: 50 },
             blacklist_webhook: { type: "string", maxLength: 150, minLength: 50 },
             unauthorized_webhook: { type: "string", maxLength: 150, minLength: 50 },
@@ -112,7 +112,7 @@ async function routes(fastify, options) {
     const UpdateUserSchema = {
         type: "object",
         properties: {
-            username: { type: "string" },
+            username: { type: "string", maxLength: 20, minLength: 5 },
             whitelisted: { type: "boolean" },
             expire: { type: "number" },
             max_executions: { type: "number", minimum: 0 },
@@ -127,7 +127,7 @@ async function routes(fastify, options) {
         properties: {
             email: { type: "string" },
             password: { type: "string", minLength: 6, maxLength: 20 },
-            username: { type: "string", minLength: 3, maxLength: 10 },
+            username: { type: "string", minLength: 3, maxLength: 15 },
             subscription_id: { type: "string" }
         },
         required: ["email", "password", "username", "subscription_id"]
@@ -137,7 +137,7 @@ async function routes(fastify, options) {
         type: "object",
         properties: {
             password: { type: "string", minLength: 6, maxLength: 20 },
-            username: { type: "string", minLength: 3, maxLength: 10 }
+            username: { type: "string", minLength: 3, maxLength: 15 }
         },
         required: ["password", "username"]
     }
@@ -154,7 +154,7 @@ async function routes(fastify, options) {
     const AddScriptSchema = {
         type: "object",
         properties: {
-            name: { type: "string", maxLength: 20, minLength: 3 },
+            name: { type: "string", maxLength: 30, minLength: 3 },
             script: { type: "string" }, // base 64 encoded,
         },
         required: ["name", "script"]
@@ -197,7 +197,7 @@ async function routes(fastify, options) {
         type: "object",
         properties: {
             password: { type: "string", minLength: 6, maxLength: 20 },
-            username: { type: "string", minLength: 3, maxLength: 10 }
+            username: { type: "string", minLength: 3, maxLength: 15 }
         },
         required: ["password", "username"]
     }
@@ -246,6 +246,10 @@ async function routes(fastify, options) {
 
         if (!validator.validate(Email)) {
             return reply.status(400).send({ error: "Email is invalid" });
+        }
+
+        if (Username.match(/[^A-z ]/)) {
+            return reply.status(400).send({ error: "Your username cannot include special characters" });
         }
 
         if (!Password.match(/[A-Z]+/)) {
@@ -339,6 +343,10 @@ async function routes(fastify, options) {
         }
         
         const Name = request.body.name;
+        if (Name.match(/[^A-z ]/)) {
+            return reply.status(400).send({ error: "Your project name cannot include special characters" });
+        }
+
         const Exploits = request.body.allowed_exploits;
 
         let SuccessWebhook = request.body.success_webhook;
@@ -395,6 +403,10 @@ async function routes(fastify, options) {
         const ScriptName = request.body.name;
         const ProjectID = request.params.id;
         let Script = request.body.script;
+
+        if (ScriptName.match(/[^A-z ]/)) {
+            return reply.status(400).send({ error: "Your script name cannot include special characters" });
+        }
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
             return reply.status(400).send({ error: "This project isn't owned by you" })
@@ -551,6 +563,10 @@ async function routes(fastify, options) {
         const Whitelisted = request.body.whitelisted;
         const Note = request.body.note;
         const DiscordID = request.body.discord_id;
+
+        if (Username.match(/[^A-z ]/)) {
+            return reply.status(400).send({ error: "The username cannot contain special characters" });
+        }
 
         if (Expiry && new Date(Expiry * 1000).toString() == "Invalid Date" || Date.now() > (Expiry * 1000)) {
             return reply.stauts(400).send({ error: "Expire must be a valid unix epoch timestamp" });
@@ -725,6 +741,10 @@ async function routes(fastify, options) {
         let UnauthorizedWebhook = request.body.unauthorized_webhook;
         const Exploits = request.body.allowed_exploits;
         const Online = request.body.online;
+
+        if (Name.match(/[^A-z ]/)) {
+            return reply.status(400).send({ error: "Your project name cannot include special characters" });
+        }
 
         const Project = await Database.GetProject(ProjectID);
         if (!Project) {
