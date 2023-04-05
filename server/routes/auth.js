@@ -288,7 +288,8 @@ async function routes(fastify, options) {
 		WhitelistJSXToken.set(request.ip, {
 			Timestamp: Date.now() / 1000,
 			Token: JSXToken,
-			ProjectID: ProjectID
+			ProjectID: ProjectID,
+			ScriptID: ScriptIdentifier
 		});
 
 		let Stats = global.AuthenticationStats[request.Exploit.replace(/ /g, "")];
@@ -362,6 +363,11 @@ async function routes(fastify, options) {
 			return reply.status(400).send("");
 		}
 
+		const Script = await Database.GetScript(Data.ProjectID, Data.ScriptID);
+		if (!Script) {
+			return reply.status(400).send("");
+		}
+
 		const NewToken = crypto.randomstr(50);
 		Data.Timestamp = Date.now() / 1000;
 		Data.Token = NewToken;
@@ -382,7 +388,7 @@ async function routes(fastify, options) {
 
 setInterval(() => {
 	WhitelistJSXToken.forEach((value, key) => {
-		if ((Date.now() / 1000) - value.Timestamp > 10) {
+		if ((Date.now() / 1000) - value.Timestamp > 15) {
 			WhitelistJSXToken.delete(key);
 		}
 	});

@@ -905,7 +905,7 @@ for _, v in pairs(JSONResponse) do
                       local DecodeJSON = JSONDecode;
                       JSONDecode = nil;
 
-                      while wait(5) do
+                      while wait(10) do
                         local Response = LS_REQUEST({
                           Method = "GET",
                           Url = "http://localhost/auth/v/" .. recievedJSXToken
