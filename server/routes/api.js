@@ -436,7 +436,8 @@ async function routes(fastify, options) {
         }
 
         let Whitelist = readFileSync(path.join(__dirname, "../../client/client.lua"), "utf-8")
-            .replace(Regex("ws://localhost:8880", "wss://luashield.com"))
+            .replace(Regex("ws://localhost:8880"), "wss://api.luashield.com")
+            .replace(Regex("http://localhost"), "https://api.luashield.com")
             .replace("local function LPH_CRASH() error(\"Blocked crash\"); end;", "")
             .replace("PROJECT_ID", ProjectID)
             .replace("SCRIPT_ID", Info.id)
@@ -444,7 +445,6 @@ async function routes(fastify, options) {
             .replace("--_SCRIPT_--", Script);
 
         try {
-            /*
             Whitelist = await macros(Whitelist);
 
             const { jobId } = await luraph.createNewJob("main", Whitelist, `${Info.id}.lua`, {
@@ -467,7 +467,7 @@ async function routes(fastify, options) {
             await Database.SubscriptionIncrementObfuscationsCount(request.Subscription.SubscriptionID, 1);
             mkdirSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}`));
             writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), data);
-            */
+
             Info.Loader = `https://luashield.com/s/${ProjectID}/${Info.id}`;
             reply.send(Info);
         } catch (er) {
@@ -644,7 +644,8 @@ async function routes(fastify, options) {
         }
         
         let Whitelist = readFileSync(path.join(__dirname, "../../client/client.lua"), "utf-8")
-            .replace(Regex("ws://localhost:8880", "wss://luashield.com"))
+            .replace(Regex("ws://localhost:8880"), "wss://api.luashield.com")
+            .replace(Regex("http://localhost"), "https://api.luashield.com")
             .replace("local function LPH_CRASH() error(\"Blocked crash\"); end;", "")
             .replace("PROJECT_ID", ProjectID)
             .replace("SCRIPT_ID", ScriptInfo.id)
@@ -652,7 +653,6 @@ async function routes(fastify, options) {
             .replace("--_SCRIPT_--", RawScript);
 
         try {
-            /*
             Whitelist = await macros(Whitelist);
 
             const { jobId } = await luraph.createNewJob("main", Whitelist, `${ScriptID}.lua`, {
@@ -673,7 +673,7 @@ async function routes(fastify, options) {
 
             await Database.SubscriptionIncrementObfuscationsCount(request.Subscription.SubscriptionID, 1);
             writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${ScriptInfo.id}/${GeneratedVersion}.lua`), data);
-            */
+            
             reply.send(ScriptInfo);
         } catch (er) {
             return reply.status(500).send({ error: er.toString() });
