@@ -30,7 +30,7 @@ async function routes(fastify, options) {
         const Buyer = await Database.GetBuyerFromAPIKey(APIKey);
 
         if (!Buyer) {
-            return reply.status(401).send({ error: "Unauthorized" });
+            return reply.status(401).send({ error: "Invalid API Key" });
         }
 
         const Subscription = await Database.GetSubscription(Buyer.SubscriptionID);
@@ -335,7 +335,10 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.get("/valid_api_key", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, (request, reply) => reply.send({ success: true }));
+    fastify.get("/account", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        let Info = await Database.GetBuyerFromAPIKey(request.APIKey);
+        reply.send(Info);
+    });
 
     // Make Project
     fastify.post("/projects", { schema: { headers: HeadersSchema, body: MakeProjectSchem }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
