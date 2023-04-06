@@ -17,7 +17,6 @@ async function routes(fastify, options) {
                 case config.websocketid:
                     const Key = crypto.randomstr(50);
                     Connected.set(request.IPAddress, Key);
-                    console.log("Websocket IP", request.IPAddress);
                     connection.socket.send(Key);
                     break;
                 default:
