@@ -837,6 +837,8 @@ async function routes(fastify, options) {
             return reply.status(400).send({ error: "You don't own this project" });
         }
 
+        const Scripts = await Database.GetScripts(Project.id);
+        Project.Scripts = Scripts;
         reply.send(Project);
     });
 
