@@ -7,6 +7,9 @@ const crypto = require("../modules/crypto");
 */
 async function routes(fastify, options) {	
     fastify.get("/ws", { websocket: true }, (connection, request) => {
+        console.log(request.headers)
+        console.log(request.ips);
+        
         if (Connected.get(request.ip)) return connection.socket.terminate();
 
         connection.socket.on("message", message => {
