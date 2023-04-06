@@ -147,6 +147,7 @@ async function routes(fastify, options) {
         properties: {
             script: { type: "string" }, // base 64 encoded,
             script_id: { type: "string" },
+            name: { type: "string", maxLength: 30, minLength: 3 }
         },
         required: ["script", "script_id"]
     }
@@ -608,8 +609,13 @@ async function routes(fastify, options) {
     // Update Script
     fastify.patch("/projects/:id/scripts", { schema: { headers: HeadersSchema, body: UpdateScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
+        const ScriptName = request.body.name;
         const ProjectID = request.params.id;
         let RawScript = request.body.script;
+
+        if (ScriptName && ScriptName.match(/[^A-z 0-9]/)) {
+            return reply.status(400).send({ error: "Your script name cannot include special characters" });
+        }
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
             return reply.status(400).send({ error: "You don't own this project" });
@@ -630,7 +636,7 @@ async function routes(fastify, options) {
         const GeneratedVersion = `v${crypto.randomUUID().substr(0, 5)}`;
         let ScriptInfo;
         try {
-            ScriptInfo = await Database.UpdateScript(ScriptID, GeneratedVersion);
+            ScriptInfo = await Database.UpdateScript(ScriptID, GeneratedVersion, ScriptName);
         } catch (er) {
             return reply.status(500).send({ error: "There was an issue with updating this script" });
         }

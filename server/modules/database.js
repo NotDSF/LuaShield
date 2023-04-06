@@ -294,12 +294,13 @@ module.exports = class Database {
         })
     }
 
-    async UpdateScript(ScriptID, Version) {
+    async UpdateScript(ScriptID, Version, Name) {
         return new Promise(async (resolve, reject) => {
             try {
                 const Result = await prisma.script.update({
                     where: { id: ScriptID },
                     data: {
+                        Name: Name,
                         Version: Version,
                         Versions: {
                             push: Version
