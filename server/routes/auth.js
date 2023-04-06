@@ -167,6 +167,7 @@ async function routes(fastify, options) {
 		const RequestHash = Query[2];
 		const WebsocketKey = Connected.get(request.ip === "::1" ? "127.0.0.1" : request.ip);
 
+		console.log("Request IP", request.ip);
 		console.log("Fingerprint", Fingerprint);
 		console.log("NumberID", NumberID);
 		console.log("ServerID", ServerID);
@@ -179,7 +180,7 @@ async function routes(fastify, options) {
 		console.log("Key", Key);
 		console.log("Request Hash", RequestHash);
 		console.log("Websocket Key", WebsocketKey);
-		
+
 		// check if all values were inputted
 		if (!Fingerprint || !NumberID || !ServerID || !UserID || !HWID || !Key || !WebsocketKey || !Duration || !RequestHash || !ProjectID || !RecievedWS || !ScriptIdentifier) {
 			return reply.status(502)
