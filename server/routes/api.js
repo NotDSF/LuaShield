@@ -248,7 +248,7 @@ async function routes(fastify, options) {
             return reply.status(400).send({ error: "Email is invalid" });
         }
 
-        if (Username.match(/[^A-z ]/)) {
+        if (Username.match(/[^A-z 0-9]/)) {
             return reply.status(400).send({ error: "Your username cannot include special characters" });
         }
 
@@ -343,7 +343,7 @@ async function routes(fastify, options) {
         }
         
         const Name = request.body.name;
-        if (Name.match(/[^A-z ]/)) {
+        if (Name.match(/[^A-z 0-9]/)) {
             return reply.status(400).send({ error: "Your project name cannot include special characters" });
         }
 
@@ -404,7 +404,7 @@ async function routes(fastify, options) {
         const ProjectID = request.params.id;
         let Script = request.body.script;
 
-        if (ScriptName.match(/[^A-z ]/)) {
+        if (ScriptName.match(/[^A-z 0-9]/)) {
             return reply.status(400).send({ error: "Your script name cannot include special characters" });
         }
 
@@ -564,7 +564,7 @@ async function routes(fastify, options) {
         const Note = request.body.note;
         const DiscordID = request.body.discord_id;
 
-        if (Username.match(/[^A-z ]/)) {
+        if (Username.match(/[^A-z 0-9]/)) {
             return reply.status(400).send({ error: "The username cannot contain special characters" });
         }
 
@@ -742,7 +742,7 @@ async function routes(fastify, options) {
         const Exploits = request.body.allowed_exploits;
         const Online = request.body.online;
 
-        if (Name.match(/[^A-z ]/)) {
+        if (Name.match(/[^A-z 0-9]/)) {
             return reply.status(400).send({ error: "Your project name cannot include special characters" });
         }
 
