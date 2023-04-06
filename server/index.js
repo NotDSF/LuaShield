@@ -41,7 +41,7 @@ global.AuthenticationStats = {
 
 fastify.register(cors);
 fastify.register(require("./routes/auth"), { prefix: "/auth" });
-fastify.register(require("./routes/api"), { prefix: "/api" });
+fastify.register(require("./routes/api"));
 
 fastify.register(require("@fastify/websocket"), {
     options: {
