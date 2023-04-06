@@ -7,17 +7,16 @@ const crypto = require("../modules/crypto");
 */
 async function routes(fastify, options) {	
     fastify.get("/ws", { websocket: true }, (connection, request) => {
-        const IPAddress = request.headers["cf-connecting-ip"] || request.ip;
-        
-        if (Connected.get(IPAddress)) return connection.socket.terminate();
+        request.ip = request.headers["cf-connecting-ip"] || request.ip;
+		
+        if (Connected.get(request.ip)) return connection.socket.terminate();
 
         connection.socket.on("message", message => {
             const Type = message.toString();
             switch (Type) {
                 case config.websocketid:
                     const Key = crypto.randomstr(50);
-                    Connected.set(IPAddress, Key);
-                    console.log("Websocket IP", IPAddress);
+                    Connected.set(request.ip, Key);
                     connection.socket.send(Key);
                     break;
                 default:

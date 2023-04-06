@@ -28,6 +28,8 @@ async function routes(fastify, options) {
 	await sodium.ready;
 
 	fastify.addHook("preHandler", (request, reply, done) => {
+		request.ip = request.headers["cf-connecting-ip"] || request.ip;
+		
 		const UserAgent = request.headers["user-agent"];
 		if (UserAgent == "Roblox/WinInet") {
 			return done();
@@ -166,20 +168,6 @@ async function routes(fastify, options) {
 		const Key = Query[1];
 		const RequestHash = Query[2];
 		const WebsocketKey = Connected.get(request.ip === "::1" ? "127.0.0.1" : request.ip);
-
-		console.log("Request IP", request.ip);
-		console.log("Fingerprint", Fingerprint);
-		console.log("NumberID", NumberID);
-		console.log("ServerID", ServerID);
-		console.log("ProjectID", ProjectID);
-		console.log("RecievedWS", RecievedWS);
-		console.log("ScriptIdentifier", ScriptIdentifier);
-		console.log("Duration", Duration);
-		console.log("UserID", UserID);
-		console.log("HWID", HWID);
-		console.log("Key", Key);
-		console.log("Request Hash", RequestHash);
-		console.log("Websocket Key", WebsocketKey);
 
 		// check if all values were inputted
 		if (!Fingerprint || !NumberID || !ServerID || !UserID || !HWID || !Key || !WebsocketKey || !Duration || !RequestHash || !ProjectID || !RecievedWS || !ScriptIdentifier) {
