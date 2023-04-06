@@ -444,6 +444,7 @@ async function routes(fastify, options) {
             .replace("--_SCRIPT_--", Script);
 
         try {
+            /*
             Whitelist = await macros(Whitelist);
 
             const { jobId } = await luraph.createNewJob("main", Whitelist, `${Info.id}.lua`, {
@@ -466,6 +467,7 @@ async function routes(fastify, options) {
             await Database.SubscriptionIncrementObfuscationsCount(request.Subscription.SubscriptionID, 1);
             mkdirSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}`));
             writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), data);
+            */
             Info.Loader = `https://luashield.com/s/${ProjectID}/${Info.id}`;
             reply.send(Info);
         } catch (er) {
@@ -650,6 +652,7 @@ async function routes(fastify, options) {
             .replace("--_SCRIPT_--", RawScript);
 
         try {
+            /*
             Whitelist = await macros(Whitelist);
 
             const { jobId } = await luraph.createNewJob("main", Whitelist, `${ScriptID}.lua`, {
@@ -670,6 +673,7 @@ async function routes(fastify, options) {
 
             await Database.SubscriptionIncrementObfuscationsCount(request.Subscription.SubscriptionID, 1);
             writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${ScriptInfo.id}/${GeneratedVersion}.lua`), data);
+            */
             reply.send(ScriptInfo);
         } catch (er) {
             return reply.status(500).send({ error: er.toString() });
