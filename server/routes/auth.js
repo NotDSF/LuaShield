@@ -28,14 +28,14 @@ async function routes(fastify, options) {
 	await sodium.ready;
 
 	fastify.addHook("preHandler", (request, reply, done) => {
-		request.ip = request.headers["cf-connecting-ip"] || request.ip;
+		request.IPAddress = request.headers["cf-connecting-ip"] || request.ip;
 		
 		const UserAgent = request.headers["user-agent"];
 		if (UserAgent == "Roblox/WinInet") {
 			return done();
 		}
 
-		if (Blacklisted.has(request.ip)) {
+		if (Blacklisted.has(request.IPAddress)) {
 			return reply.status(502);
 		}
 
@@ -55,7 +55,7 @@ async function routes(fastify, options) {
 						const Data = JSON.parse(sodium.crypto_sign_open(Signature, PublicKey, "text"));
 
 						if (HWID !== Data.fingerprint || UD !== Data.userIdentifier) {
-							Blacklisted.add(request.ip);
+							Blacklisted.add(request.IPAddress);
 							return reply.status(502);
 						}
 
@@ -110,9 +110,9 @@ async function routes(fastify, options) {
 
 		const WhitelistHWID = await Database.GetWhitelistWithHWID(request.HWID);
 		const WhitelistKey = await Database.GetWhitelist(crypto.sha512(Key));
-		const JSXToken = WhitelistJSXToken.get(request.ip);
+		const JSXToken = WhitelistJSXToken.get(request.IPAddress);
 		if (JSXToken) {
-			WhitelistJSXToken.delete(request.ip);
+			WhitelistJSXToken.delete(request.IPAddress);
 		}
 
 		reply.send(EncodeJSON({
@@ -167,9 +167,9 @@ async function routes(fastify, options) {
 		const Query = Object.values(request.query);
 		const Key = Query[1];
 		const RequestHash = Query[2];
-		const WebsocketKey = Connected.get(request.ip === "::1" ? "127.0.0.1" : request.ip);
+		const WebsocketKey = Connected.get(request.IPAddress === "::1" ? "127.0.0.1" : request.IPAddress);
 
-		console.log("Request IP", request.ip);
+		console.log("Request IP", request.IPAddress);
 		console.log("Fingerprint", Fingerprint);
 		console.log("NumberID", NumberID);
 		console.log("ServerID", ServerID);
@@ -207,7 +207,7 @@ async function routes(fastify, options) {
 
 		if (!Script) {
 			await webhooks.Unauthorized(Project.UnauthorizedWebhook, {
-				IP: request.ip,
+				IP: request.IPAddress,
 				Reason: `This user tried running a LuaShield script with an unknown SID (Script ID)`
 			});
 			return reply.status(502)
@@ -215,7 +215,7 @@ async function routes(fastify, options) {
 
 		if (!Project.SynapseX && request.Exploit === "Synapse X" || !Project.ScriptWare && request.Exploit === "Script Ware" || !Project.SynapseV3 && request.Exploit === "Synapse V3") {
 			await webhooks.Unauthorized(Project.UnauthorizedWebhook, {
-				IP: request.ip,
+				IP: request.IPAddress,
 				Reason: `This user tried running this script on a disallowed exploit (${request.Exploit}), username: ${Whitelist.Username}`
 			});
 			return reply.status(502)
@@ -256,7 +256,7 @@ async function routes(fastify, options) {
 
 			if (Whitelist.ExpireAt && Date.now() <= Whitelist.ExpireAt) {
 				await webhooks.Unauthorized(Project.UnauthorizedWebhook, {
-					IP: request.ip,
+					IP: request.IPAddress,
 					Reason: `This user's whitelist has expired, username: \`${Whitelist.Username}\``
 				});
 				return reply.status(502)
@@ -264,7 +264,7 @@ async function routes(fastify, options) {
 
 			if (Whitelist.MaxExecutions !== 0 && Whitelist.Executions >= Whitelist.MaxExecutions) {
 				await webhooks.Unauthorized(Project.UnauthorizedWebhook, {
-					IP: request.ip,
+					IP: request.IPAddress,
 					Reason: `This user has reached their maximum amount of executions (${Whitelist.MaxExecutions}), username: \`${Whitelist.Username}\``
 				});
 				return reply.status(502)
@@ -274,7 +274,7 @@ async function routes(fastify, options) {
 		if (WebsocketKey !== RecievedWS || !Flag) {
 			if (Whitelist) {
 				await webhooks.Blacklist(Project.BlacklistWebhook, {
-					IP: request.ip,
+					IP: request.IPAddress,
 					Flag: `${Fingerprint} ${NumberID}`,
 					WebsocketID: RecievedWS,
 					Reason: `User supplied invalid authentication keys`,
@@ -293,15 +293,15 @@ async function routes(fastify, options) {
 		
 		if (!Whitelist) {
 			await webhooks.Unauthorized(Project.UnauthorizedWebhook, {
-				IP: request.ip,
+				IP: request.IPAddress,
 				Reason: "User tried to run script without a whitelist"
 			});
 			return reply.status(502);
 		}
 
 		let JSXToken = crypto.randomstr(50);
-		Connected.delete(request.ip === "::1" ? "127.0.0.1" : request.ip);
-		WhitelistJSXToken.set(request.ip, {
+		Connected.delete(request.IPAddress === "::1" ? "127.0.0.1" : request.IPAddress);
+		WhitelistJSXToken.set(request.IPAddress, {
 			Timestamp: Date.now() / 1000,
 			Token: JSXToken,
 			ProjectID: ProjectID,
@@ -343,7 +343,7 @@ async function routes(fastify, options) {
 		}
 
 		await webhooks.Success(Project.SuccessWebhook, {
-			IP: request.ip,
+			IP: request.IPAddress,
 			UserAgent: request.headers["user-agent"],
 			Whitelist: Whitelist,
 			Duration: Duration,
@@ -369,7 +369,7 @@ async function routes(fastify, options) {
 			return reply.status(400).send("");
 		}
 
-		const Data = WhitelistJSXToken.get(request.ip);
+		const Data = WhitelistJSXToken.get(request.IPAddress);
 		if (!Data || Data.Token !== Token) {
 			return reply.status(400).send("");
 		}
@@ -393,11 +393,11 @@ async function routes(fastify, options) {
 			Data.Token = crypto.randomstr(50);
 		}
 
-		if (Blacklisted.has(request.ip)) {
+		if (Blacklisted.has(request.IPAddress)) {
 			Data.Token = crypto.randomstr(50);
 		}
 
-		WhitelistJSXToken.set(request.ip, Data);
+		WhitelistJSXToken.set(request.IPAddress, Data);
 		reply.send(EncodeJSON({ Token: NewToken }, HWID));
 	});
 }
