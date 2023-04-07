@@ -15,6 +15,23 @@ function Regex(expression) {
     return new RegExp(expression.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), "g");
 }
 
+function IncrementScriptVersion(version) {
+    let Collums = version.slice(1).split(".").map(s => parseInt(s));
+    Collums[2]++;
+
+    if (Collums[2] >= 10) {
+        Collums[2] = 0;
+        Collums[1]++;
+    }
+
+    if (Collums[1] >= 10) {
+        Collums[1] = 0;
+        Collums[0]++;
+    }
+
+    return `v${Collums.join(".")}`;
+}
+
 /**
  * @param {import("fastify").FastifyInstance} fastify  Encapsulated Fastify Instance
  * @param {Object} options plugin options, refer to https://www.fastify.io/docs/latest/Reference/Plugins/#plugin-options
@@ -428,11 +445,11 @@ async function routes(fastify, options) {
             return reply.status(500).send({ error: er.toString() });
         }
 
-        const GeneratedVersion = `v${crypto.randomUUID().substr(0, 5)}`;
+        const GeneratedVersion = "v1.0.0";
         let Info;
         try {
             await Database.SubscriptionIncrementScriptCount(request.Subscription.SubscriptionID, 1);
-            Info = await Database.MakeScript(ProjectID, ScriptName, GeneratedVersion);
+            Info = await Database.MakeScript(ProjectID, ScriptName, "v1.0.0");
         } catch (er) {   
             console.log(er);
             return reply.status(500).send({ error: "There was an issue while creating this script" });
@@ -638,7 +655,7 @@ async function routes(fastify, options) {
             return reply.status(500).send({ error: er.toString() });
         }
 
-        const GeneratedVersion = `v${crypto.randomUUID().substr(0, 5)}`;
+        const GeneratedVersion = IncrementScriptVersion(Script.Version);
         let ScriptInfo;
         try {
             ScriptInfo = await Database.UpdateScript(ScriptID, GeneratedVersion, ScriptName);
