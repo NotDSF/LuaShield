@@ -853,7 +853,7 @@ for _, v in pairs(JSONResponse) do
                   WLSuccess = true; --UpdateGUI("Status", "Ready!", 354); wait(.25); --ScreenGui:Destroy();
                   
                   LS_OPCODESPAM("CALL");
-                  (function() 
+                  (function(...) 
                     LS_OPCODESPAM("LT")
                     LS_OPCODESPAM("MOVE")
                     LS_OPCODESPAM("CALL")

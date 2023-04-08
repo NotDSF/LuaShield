@@ -238,26 +238,80 @@ async function routes(fastify, options) {
         required: ["url", "name"]
     }
 
-    fastify.get("/stats", { websocket: false }, (request, reply) => {
+    const ResponseScema = {
+        400: {
+            type: "object",
+            properties: {
+                error: { type: "string" }
+            }
+        },
+        401: {
+            type: "object",
+            properties: {
+                error: { type: "string" }
+            }
+        },
+        500: {
+            type: "object",
+            properties: {
+                error: { type: "string" }
+            }
+        }
+    }
+
+    const StatsResponse = {
+        200: {
+            type: "object",
+            properties: {
+                online: { type: "boolean" },
+                authentication_speeds: {
+                    type: "object",
+                    properties: {
+                        synapse_x: {
+                            type: "object",
+                            properties: {
+                                average: { type: "number" }
+                            }
+                        },
+                        script_ware: {
+                            type: "object",
+                            properties: {
+                                average: { type: "number" }
+                            }
+                        },
+                        synapse_v3: {
+                            type: "object",
+                            properties: {
+                                average: { type: "number" }
+                            }
+                        }
+                    }
+                },
+                average_authentication: { type: "number" }
+            }
+        }
+    }
+
+    fastify.get("/stats", { websocket: false, schema: { response: StatsResponse } }, (request, reply) => {
         let Stats = global.AuthenticationStats;
         reply.send({
             online: true,
             authentication_speeds: {
                 synapse_x: {
-                    average: Stats.SynapseX.total / Stats.SynapseX.times
+                    average: (Stats.SynapseX.total / Stats.SynapseX.times) || 0
                 },
                 script_ware: {
-                    average: Stats.ScriptWare.total / Stats.ScriptWare.times
+                    average: (Stats.ScriptWare.total / Stats.ScriptWare.times) || 0
                 },
                 synapse_v3: {
-                    average: Stats.SynapseV3.total / Stats.SynapseV3.times
+                    average: (Stats.SynapseV3.total / Stats.SynapseV3.times) || 0
                 }
             },
-            average_authentication: Stats.total / Stats.times
+            average_authentication: (Stats.total / Stats.times) || 0
         })
     })
 
-    fastify.post("/signup", { schema: { body: SignupSchema }, websocket: false }, async (request, reply) => {
+    fastify.post("/signup", { schema: { body: SignupSchema, response: ResponseScema }, websocket: false }, async (request, reply) => {
         const Email = request.body.email;
         const Password = request.body.password;
         const Username = request.body.username;
@@ -301,7 +355,7 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.post("/login", { schema: { body: LoginSchema }, websocket: false }, async (request, reply) => {
+    fastify.post("/login", { schema: { body: LoginSchema, response: ResponseScema }, websocket: false }, async (request, reply) => {
         const Password = request.body.password;
         const Username = request.body.username;
         const Buyer = await Database.GetBuyer(Username, crypto.sha512(Password));
@@ -316,7 +370,7 @@ async function routes(fastify, options) {
         reply.send(Buyer);
     });
 
-    fastify.post("/delete_account", { schema: { body: DeleteAccount }, websocket: false }, async (request, reply) => {
+    fastify.post("/delete_account", { schema: { body: DeleteAccount, response: ResponseScema }, websocket: false }, async (request, reply) => {
         const Password = request.body.password;
         const Username = request.body.username;
         const Buyer = await Database.GetBuyer(Username, crypto.sha512(Password));
@@ -341,7 +395,7 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.post("/change_password", { schema: { headers: HeadersSchema, body: ResetPassword }, websocket: false }, async (request, reply) => {
+    fastify.post("/change_password", { schema: { headers: HeadersSchema, body: ResetPassword, response: ResponseScema }, websocket: false }, async (request, reply) => {
         const Buyer = await Database.GetBuyerFromAPIKey(request.headers["luashield-api-key"]);
         const Password = request.body.password;
         
@@ -362,13 +416,13 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.get("/account", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.get("/account", { schema: { headers: HeadersSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         let Info = await Database.GetBuyerFromAPIKey(request.APIKey);
         reply.send(Info);
     });
 
     // Make Project
-    fastify.post("/projects", { schema: { headers: HeadersSchema, body: MakeProjectSchem }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.post("/projects", { schema: { headers: HeadersSchema, body: MakeProjectSchem, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         if (request.Subscription.Projects >= subscription_data.max_projects) {
             return reply.status(400).send({ error: "You have reached your maximum amount of projects for your account" })
         }
@@ -426,7 +480,7 @@ async function routes(fastify, options) {
     });
 
     // Create Script
-    fastify.post("/projects/:id/scripts", { schema: { headers: HeadersSchema, body: AddScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.post("/projects/:id/scripts", { schema: { headers: HeadersSchema, body: AddScriptSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         if (request.Subscription.Scripts >= subscription_data.max_scripts) {
             return reply.status(400).send({ error: "You have reached your maximum amount of scripts for your account" })
         }
@@ -506,7 +560,7 @@ async function routes(fastify, options) {
     });
 
     // Update Existing User 
-    fastify.patch("/projects/:id/users", { schema: { headers: HeadersSchema, body: UpdateUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.patch("/projects/:id/users", { schema: { headers: HeadersSchema, body: UpdateUserSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ProjectID = request.params.id;
         const Username = request.body.username;
         const Whitelisted = request.body.whitelisted;
@@ -540,7 +594,7 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.post("/projects/:id/users/reset_key", { schema: { headers: Headers, body: ResetKey }, websocket: false,  preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.post("/projects/:id/users/reset_key", { schema: { headers: Headers, body: ResetKey, response: ResponseScema }, websocket: false,  preHandler: AuthenticationHandler }, async (request, reply) => {
         const Username = request.body.username;
         const ProjectID = request.params.id;
 
@@ -562,7 +616,7 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.post("/projects/:id/users/reset_hwid", { schema: { headers: Headers, body: ResetKey }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.post("/projects/:id/users/reset_hwid", { schema: { headers: Headers, body: ResetKey, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const Username = request.body.username;
         const ProjectID = request.params.id;
 
@@ -588,7 +642,7 @@ async function routes(fastify, options) {
     });
 
     // Create User
-    fastify.post("/projects/:id/users", { schema: { headers: HeadersSchema, body: WhiteistUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.post("/projects/:id/users", { schema: { headers: HeadersSchema, body: WhiteistUserSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ProjectID = request.params.id;
         const Username = request.body.username;
         const Expiry = request.body.expire;
@@ -626,7 +680,7 @@ async function routes(fastify, options) {
     });
 
     // Delete User
-    fastify.delete("/projects/:id/users", { schema: { headers: HeadersSchema, body: DeleteUserSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.delete("/projects/:id/users", { schema: { headers: HeadersSchema, body: DeleteUserSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ProjectID = request.params.id;
         const Username = request.body.username;
 
@@ -639,7 +693,7 @@ async function routes(fastify, options) {
     });
 
     // Update Script
-    fastify.patch("/projects/:id/scripts", { schema: { headers: HeadersSchema, body: UpdateScriptSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.patch("/projects/:id/scripts", { schema: { headers: HeadersSchema, body: UpdateScriptSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
         const ScriptName = request.body.name;
         const ProjectID = request.params.id;
@@ -711,7 +765,7 @@ async function routes(fastify, options) {
     });
 
     // Update Script Version
-    fastify.patch("/projects/:id/scripts/version", { schema: { headers: HeadersSchema, body: UpdateVersion }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.patch("/projects/:id/scripts/version", { schema: { headers: HeadersSchema, body: UpdateVersion, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
         const ProjectID = request.params.id;
         const Version = request.body.version;
@@ -738,7 +792,7 @@ async function routes(fastify, options) {
     });
 
     // Delete Script Version
-    fastify.delete("/projects/:id/scripts/version", { schema: { headers: HeadersSchema, body: UpdateVersion }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.delete("/projects/:id/scripts/version", { schema: { headers: HeadersSchema, body: UpdateVersion, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
         const ProjectID = request.params.id;
         const Version = request.body.version;
@@ -773,7 +827,7 @@ async function routes(fastify, options) {
     });
 
     // Update Project
-    fastify.patch("/projects/:id", { schema: { headers: HeadersSchema, body: UpdateProjectSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.patch("/projects/:id", { schema: { headers: HeadersSchema, body: UpdateProjectSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ProjectID = request.params.id;
         const Name = request.body.name;
         let SuccessWebhook = request.body.success_webhook;
@@ -836,7 +890,7 @@ async function routes(fastify, options) {
     });
     
     // Get Projects
-    fastify.get("/projects", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.get("/projects", { schema: { headers: HeadersSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const Projects = await Database.GetProjects(request.APIKey);
 
         for (Project of Projects) {
@@ -848,7 +902,7 @@ async function routes(fastify, options) {
     });
 
     // Get Project Users
-    fastify.get("/projects/:id/users", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.get("/projects/:id/users", { schema: { headers: HeadersSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ProjectID = request.params.id;
         const Project = await Database.GetProject(ProjectID);
 
@@ -865,7 +919,7 @@ async function routes(fastify, options) {
     });
 
     // Get Project By Id
-    fastify.get("/projects/:id", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.get("/projects/:id", { schema: { headers: HeadersSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ProjectID = request.params.id;
         const Project = await Database.GetProject(ProjectID);
 
@@ -883,7 +937,7 @@ async function routes(fastify, options) {
     });
 
     // Delete Project
-    fastify.delete("/projects/:id", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.delete("/projects/:id", { schema: { headers: HeadersSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ProjectID = request.params.id;
 
         const Project = await Database.GetProject(ProjectID);
@@ -910,7 +964,7 @@ async function routes(fastify, options) {
     });
 
     // Delete Script
-    fastify.delete("/projects/:id/scripts", { schema: { headers: HeadersSchema, body: DeleteScript }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.delete("/projects/:id/scripts", { schema: { headers: HeadersSchema, body: DeleteScript, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
         const ProjectID = request.params.id;
 
@@ -938,7 +992,7 @@ async function routes(fastify, options) {
     });
 
     // Create Webhook
-    fastify.post("/webhooks", { schema: { headers: HeadersSchema, body: MakeWebhook }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.post("/webhooks", { schema: { headers: HeadersSchema, body: MakeWebhook, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const WebhookName = request.body.name;
         let Url = request.body.url;
 
@@ -971,7 +1025,7 @@ async function routes(fastify, options) {
         }
     });
 
-    fastify.delete("/webhooks/:id", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.delete("/webhooks/:id", { schema: { headers: HeadersSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const Token = request.params.id;
         const Webhook = await Database.GetWebhook(Token);
 
@@ -993,7 +1047,7 @@ async function routes(fastify, options) {
     });
 
     // Get Webhooks
-    fastify.get("/webhooks", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.get("/webhooks", { schema: { headers: HeadersSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const Webhooks = await Database.GetWebhooks(request.APIKey);
         reply.send(Webhooks);
     });
@@ -1007,7 +1061,7 @@ async function routes(fastify, options) {
     }
 
     // Webhook Request
-    fastify.post("/webhooks/:token", { schema: { headers: WebhookSchema, websocket: false } }, async (request, reply) => {
+    fastify.post("/webhooks/:token", { schema: { headers: WebhookSchema, response: ResponseScema }, websocket: false }, async (request, reply) => {
         const Token = request.params.token;
         const AccessToken = request.headers["luashield-access-token"];
 

@@ -8,7 +8,7 @@ function GenerateRandomNumber(size) {
     return Math.floor(Math.random() * size)
 }
 
-let WhitelistVariables = ["TimeNow", "IDENTIFIERS", "Rot2", "Recursion", "MRandom", "Key", "gc", "tfind", "Info", "RandomWord", "RandomWord2", "EQ", "JMPCounter", "WLSuccess", "HttpGet", "whitelistVersion", "Pcall", "Type", "CURRENT_EXPLOIT", "fakeJMP", "fakeSet", "fakeReqId"]
+let WhitelistVariables = ["TimeNow", "IDENTIFIERS", "Rot2", "Recursion", "MRandom", "Key", "gc", "tfind", "Info", "RandomWord", "RandomWord2", "EQ", "JMPCounter", "WLSuccess", "HttpGet", "whitelistVersion", "Pcall", "Type", "CURRENT_EXPLOIT", "fakeJMP", "fakeSet", "fakeReqId", "ScriptIdentifier", "LS_ScriptName", "LS_ScriptVersion", "LS_Exploit", "LS_Executions", "LS_CrackAttempts", "LS_Username", "LS_AccessToken"]
 let OptimizationReplaces = {
     "string.sub": "Sub",
     "string.char": "Char",
