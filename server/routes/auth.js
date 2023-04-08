@@ -286,13 +286,18 @@ async function routes(fastify, options) {
 		}
 
 		let JSXToken = crypto.randomstr(50);
+		let WebhookToken = crypto.randomstr(50);
+
 		Connected.delete(request.IPAddress === "::1" ? "127.0.0.1" : request.IPAddress);
 		WhitelistJSXToken.set(request.IPAddress, {
 			Timestamp: Date.now() / 1000,
 			Token: JSXToken,
 			ProjectID: ProjectID,
-			ScriptID: ScriptIdentifier
+			ScriptID: ScriptIdentifier,
+			WebhookToken: WebhookToken
 		});
+
+		global.WebhookTokens.add(WebhookToken);
 
 		let Stats = global.AuthenticationStats[request.Exploit.replace(/ /g, "")];
 		Stats.times++;
@@ -318,7 +323,8 @@ async function routes(fastify, options) {
 				Whitelist.Exploit,
 				Whitelist.Executions,
 				Whitelist.CrackAttempts,
-				Whitelist.Username
+				Whitelist.Username,
+				WebhookToken
 			]
 		}, request.HWID));
 
@@ -391,6 +397,7 @@ async function routes(fastify, options) {
 setInterval(() => {
 	WhitelistJSXToken.forEach((value, key) => {
 		if ((Date.now() / 1000) - value.Timestamp > 15) {
+			global.WebhookTokens.delete(value.WebhookToken);
 			WhitelistJSXToken.delete(key);
 		}
 	});

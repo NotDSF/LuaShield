@@ -7,6 +7,7 @@ const validator = require("email-validator");
 const { Luraph } = require("luraph");
 const { readFileSync, mkdirSync, writeFileSync, existsSync, rmSync } = require("fs");
 const { subscription_data } = require("../config.json");
+const { UserWebhook, CheckWebhook } = require("../modules/webhooks");
 
 const Database = new database();
 const luraph = new Luraph(process.env.LURAPH_KEY);
@@ -226,6 +227,15 @@ async function routes(fastify, options) {
             password: { type: "string", minLength: 6, maxLength: 20 }
         },
         required: ["password"]
+    }
+
+    const MakeWebhook = {
+        type: "object",
+        properties: {
+            url: { type: "string", maxLength: 150, minLength: 50 },
+            name: { type: "string", maxLength: 30, minLength: 3 }
+        },
+        required: ["url", "name"]
     }
 
     fastify.get("/stats", { websocket: false }, (request, reply) => {
@@ -925,6 +935,102 @@ async function routes(fastify, options) {
             console.log(er);
             return reply.status(500).send({ error: "There was an issue trying to delete this script" });
         }
+    });
+
+    // Create Webhook
+    fastify.post("/webhooks", { schema: { headers: HeadersSchema, body: MakeWebhook }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const WebhookName = request.body.name;
+        let Url = request.body.url;
+
+        if (WebhookName.match(/[^A-z 0-9]/)) {
+            return reply.status(400).send({ error: "Your webhook name cannot include special characters" });
+        }
+
+        Url = Url.match(/discord\.com\/api\/webhooks\/\d+\/[\S]+$/);
+        if (!Url) {
+            return reply.status(400).send({ error: "url is not a valid webhook" });
+        }
+
+        Url = "https://" + Url.shift();
+        
+        try {
+            await CheckWebhook(Url);
+        } catch (er) {
+            return reply.status(400).send({ error: er.toString() });
+        }
+
+        let Token = crypto.randomUUID();
+        try {
+            await Database.CreateWebhook(Url, Token, WebhookName, request.APIKey);
+            await Database.UpdateBuyerWebhooks(Token, request.APIKey);
+
+            reply.send({ url: `https://api.luashield.com/webhooks/${Token}`, token: Token });
+        } catch (er) {
+            console.log(er);
+            reply.status(500).send({ error: "Failed to create webhook" });
+        }
+    });
+
+    fastify.delete("/webhooks/:id", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const Token = request.params.id;
+        const Webhook = await Database.GetWebhook(Token);
+
+        if (!Webhook) {
+            return reply.status(400).send({ error: "This webhook doesn't exist" });
+        }
+
+        if (Webhook.Owner !== request.APIKey) {
+            return reply.status(400).send({ error: "You don't own this webhook" });
+        }
+
+        try {
+            await Database.DeleteWebhook(Token, request.APIKey);
+            reply.send({ success: true });
+        } catch (er) {
+            console.log(er);
+            reply.status(500).send({ error: "Failed to delete webhook" })
+        }
+    });
+
+    // Get Webhooks
+    fastify.get("/webhooks", { schema: { headers: HeadersSchema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        const Webhooks = await Database.GetWebhooks(request.APIKey);
+        reply.send(Webhooks);
+    });
+
+    const WebhookSchema = {
+        type: "object",
+        properties: {
+            ["LuaShield-Access-Token"]: { type: "string" }
+        },
+        required: ["LuaShield-Access-Token"]
+    }
+
+    // Webhook Request
+    fastify.post("/webhooks/:token", { schema: { headers: WebhookSchema, websocket: false } }, async (request, reply) => {
+        const Token = request.params.token;
+        const AccessToken = request.headers["luashield-access-token"];
+
+        const Webhook = await Database.GetWebhook(Token);
+        if (!Webhook) {
+            return reply.status(400).send({ error: "This webhook doesn't exist" });
+        }
+
+        if (!global.WebhookTokens.has(AccessToken)) {
+            return reply.status(400).send({ error: "Invalid access token" })
+        }
+
+        if (!request.body) {
+            return reply.status(400).send({ error: "Must have body" });
+        }
+
+        try {
+            await UserWebhook(Webhook.Url, request.body);
+        } catch (er) {
+            console.log(er);
+        }
+        
+        reply.send({ success: true });
     });
 
 

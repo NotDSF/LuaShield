@@ -145,6 +145,13 @@ module.exports = function(Script, isuserscript) {
                             break;
                         }
 
+                        if (node.base.name == "LS_SecureWebhook") {
+                            if (MacroArgCheck(node, 0, "StringLiteral")) return;
+                            if (MacroArgCheck(node, 0, "TableConstructorExpression")) return;
+
+                            break;
+                        }
+
                         if (random.int(0, 2) == 0 && isuserscript && node.base.name) {
                             let Name = node.base.name;
                             let Arguments = BackupScript.slice(node.range[0] + Name.length, node.range[1]);

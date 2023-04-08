@@ -187,4 +187,42 @@ async function SetupWebhook(webhook, name, type) {
     })
 }
 
-module.exports = { Success, Blacklist, Unauthorized, SetupWebhook }
+async function CheckWebhook(webhook) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            let Response = await fetch(webhook, { method: "GET" });
+            if (Response.status !== 200) {
+                reject(`${webhook} doesn't exist`);
+            }
+            resolve();
+        } catch (er) {
+            console.log(er);
+            reject(er.toString());
+        }
+    });
+}
+
+async function UserWebhook(webhook, user_body) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            await fetch("https://webhook.luashield.workers.dev/", {
+                method: "POST",
+                headers: {
+                    "content-type": "application/json",
+                    "LuaShield-Authorization": process.env.WEBHOOK_AUTH
+                },
+                body: JSON.stringify({
+                    url: webhook,
+                    body: user_body
+                })
+            });
+
+            resolve();
+        } catch (er) {
+            console.log(er);
+            reject(er.toString());
+        }
+    });
+}
+
+module.exports = { Success, Blacklist, Unauthorized, SetupWebhook, UserWebhook, CheckWebhook }

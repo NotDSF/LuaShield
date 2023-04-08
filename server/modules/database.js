@@ -777,5 +777,96 @@ module.exports = class Database {
             });
         });
     }
+
+    async CreateWebhook(Url, Token, Name, APIKey) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.webhook.create({
+                    data: {
+                        Name,
+                        Owner: APIKey,
+                        Token,
+                        Url
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
+
+    async GetWebhooks(APIKey) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.webhook.findMany({
+                    where: { Owner: APIKey }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        })
+    }
+
+    async GetWebhook(Token) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.webhook.findUnique({
+                    where: { Token }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
+
+    async DeleteWebhook(Token, APIKey) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const DeleteWebhook = await prisma.webhook.delete({
+                    where: { Token }
+                });
+
+                const Buyer = await prisma.buyer.findUnique({
+                    where: { APIKey }
+                });
+
+                await prisma.buyer.update({
+                    where: { APIKey },
+                    data: {
+                        Webhooks: Buyer.Webhooks.filter(a => a !== Token)
+                    }
+                });
+                resolve();
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        });
+    }
+
+    async UpdateBuyerWebhooks(Token, APIKey) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const Result = await prisma.buyer.update({
+                    where: { APIKey },
+                    data: {
+                        Webhooks: {
+                            push: Token
+                        }
+                    }
+                });
+                resolve(Result);
+            } catch (er) {
+                console.log(er);
+                reject();
+            }
+        })
+    }
 }
 

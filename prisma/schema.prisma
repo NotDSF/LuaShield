@@ -52,23 +52,32 @@ model Script {
 }
 
 model Buyer {
-  id                 String   @id @default(uuid()) @map("_id")
-  Projects           String[] @default([])
-  Email              String   @unique
-  Password           String   @unique
-  APIKey             String   @unique
-  Username           String   @unique
-  SubscriptionID     String
-  Admin              Boolean @default(false)
-  RegisteredAt       Int
+  id             String   @id @default(uuid()) @map("_id")
+  Projects       String[] @default([])
+  Webhooks       String[] @default([])
+  Email          String   @unique
+  Password       String   @unique
+  APIKey         String   @unique
+  Username       String   @unique
+  SubscriptionID String
+  Admin          Boolean  @default(false)
+  RegisteredAt   Int
 }
 
 model Subscription {
-  SubscriptionID  String @id @default(uuid()) @map("_id")
-  Expire Int 
-  Reset Int
-  Email String? @unique
-  Obfuscations Int?
-  Projects Int?
-  Scripts Int?
+  SubscriptionID String  @id @default(uuid()) @map("_id")
+  Expire         Int
+  Reset          Int
+  Email          String? @unique
+  Obfuscations   Int?
+  Projects       Int?
+  Scripts        Int?
+}
+
+model Webhook {
+  id    String @id @default(uuid()) @map("_id")
+  Token String @unique
+  Url   String
+  Owner String
+  Name  String
 }

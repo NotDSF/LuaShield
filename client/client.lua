@@ -66,6 +66,7 @@ end;
 
 local request = syn and syn.request or request;
 local LS_REQUEST;
+local LS_AccessToken;
 
 do
     local ProtectObject;
@@ -145,6 +146,24 @@ end;
 
 local function HttpGet(Url) 
   return LS_REQUEST({ Url = Url, Method = "GET" }).Body;
+end;
+
+local function LS_SecureWebhook(Url, body) 
+  local Response = request({
+    Url = Url,
+    Method = "POST",
+    Headers = {
+      ["content-type"] = "application/json",
+      ["luashield-access-token"] = LS_AccessToken
+    },
+    Body = game.HttpService:JSONEncode(body)
+  });
+
+  if Response.StatusCode ~= 200 then
+    error(Response.Body);
+  end;
+
+  return true;
 end;
 
 do
@@ -828,6 +847,7 @@ for _, v in pairs(JSONResponse) do
                   LS_Executions = v["11"];
                   LS_CrackAttempts = v["12"];
                   LS_Username = v["13"];
+                  LS_AccessToken = v["14"];
 
                   BackupPrint(format("LuaShield [%s]: Authenticated in %ss", LS_ScriptName, tick() - TimeNow));
                   WLSuccess = true; --UpdateGUI("Status", "Ready!", 354); wait(.25); --ScreenGui:Destroy();
@@ -902,11 +922,13 @@ for _, v in pairs(JSONResponse) do
                     end;
 
                     coroutine.wrap(function() 
+                      local Request = LS_REQUEST;
                       local DecodeJSON = JSONDecode;
                       JSONDecode = nil;
+                      LS_REQUEST = request;
 
                       while wait(10) do
-                        local Response = LS_REQUEST({
+                        local Response = Request({
                           Method = "GET",
                           Url = "http://localhost/auth/v/" .. recievedJSXToken
                         });

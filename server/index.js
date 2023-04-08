@@ -21,6 +21,7 @@ if (!existsSync(path.join(__dirname, "../projects"))) {
     mkdirSync(path.join(__dirname, "../projects"));
 }
 
+global.WebhookTokens = new Set();
 global.Connected = new Map();
 global.AuthenticationStats = {
     SynapseX: {
