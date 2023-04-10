@@ -424,7 +424,7 @@ async function routes(fastify, options) {
     // Make Project
     fastify.post("/projects", { schema: { headers: HeadersSchema, body: MakeProjectSchem, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         if (request.Subscription.Projects >= subscription_data.max_projects) {
-            return reply.status(400).send({ error: "You have reached your maximum amount of projects for your account" })
+            return reply.status(403).send({ error: "You have reached your maximum amount of projects for your account" })
         }
         
         const Name = request.body.name;
@@ -482,7 +482,7 @@ async function routes(fastify, options) {
     // Create Script
     fastify.post("/projects/:id/scripts", { schema: { headers: HeadersSchema, body: AddScriptSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         if (request.Subscription.Scripts >= subscription_data.max_scripts) {
-            return reply.status(400).send({ error: "You have reached your maximum amount of scripts for your account" })
+            return reply.status(403).send({ error: "You have reached your maximum amount of scripts for your account" })
         }
 
         const ScriptName = request.body.name;
@@ -494,12 +494,12 @@ async function routes(fastify, options) {
         }
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
-            return reply.status(400).send({ error: "This project isn't owned by you" })
+            return reply.status(403).send({ error: "This project isn't owned by you" })
         }
 
         let Project = await Database.GetProject(ProjectID);
         if (!Project) {
-            return reply.status(400).send({ error: "This project doesn't exist" });
+            return reply.status(404).send({ error: "This project doesn't exist" });
         }
 
         Script = Buffer.from(Script, "base64").toString();
@@ -599,12 +599,12 @@ async function routes(fastify, options) {
         const ProjectID = request.params.id;
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
-            return reply.status(400).send({ error: "You don't own this project" });
+            return reply.status(403).send({ error: "You don't own this project" });
         }
 
         const Existing = await Database.GetUser(Username, ProjectID);
         if (!Existing) {
-            return reply.status(400).send({ error: "This user doesn't exist" });
+            return reply.status(404).send({ error: "This user doesn't exist" });
         }
 
         const Key = crypto.randomUUID();
@@ -621,12 +621,12 @@ async function routes(fastify, options) {
         const ProjectID = request.params.id;
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
-            return reply.status(400).send({ error: "You don't own this project" });
+            return reply.status(403).send({ error: "You don't own this project" });
         }
 
         const Existing = await Database.GetUser(Username, ProjectID);
         if (!Existing) {
-            return reply.status(400).send({ error: "This user doesn't exist" });
+            return reply.status(404).send({ error: "This user doesn't exist" });
         }
 
         if (!Existing.HWID) {
@@ -704,12 +704,12 @@ async function routes(fastify, options) {
         }
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
-            return reply.status(400).send({ error: "You don't own this project" });
+            return reply.status(403).send({ error: "You don't own this project" });
         }
 
         const Script = await Database.GetScript(ProjectID, ScriptID);
         if (!Script) {
-            return reply.status(400).send({ error: "This script doesn't exist" });
+            return reply.status(404).send({ error: "This script doesn't exist" });
         }
 
         RawScript = Buffer.from(RawScript, "base64").toString();
@@ -771,16 +771,16 @@ async function routes(fastify, options) {
         const Version = request.body.version;
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
-            return reply.status(400).send({ error: "You don't own this project" });
+            return reply.status(403).send({ error: "You don't own this project" });
         }
 
         const Script = await Database.GetScript(ProjectID, ScriptID);
         if (!Script) {
-            return reply.status(400).send({ error: "This script doesn't exist" });
+            return reply.status(404).send({ error: "This script doesn't exist" });
         }
 
         if (!Script.Versions.find(x => x === Version)) {
-            return reply.status(400).send({ error: "This version doesn't exist" });
+            return reply.status(404).send({ error: "This version doesn't exist" });
         }
 
         try {
@@ -798,16 +798,16 @@ async function routes(fastify, options) {
         const Version = request.body.version;
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
-            return reply.status(400).send({ error: "You don't own this project" });
+            return reply.status(403).send({ error: "You don't own this project" });
         }
 
         const Script = await Database.GetScript(ProjectID, ScriptID);
         if (!Script) {
-            return reply.status(400).send({ error: "This script doesn't exist" });
+            return reply.status(404).send({ error: "This script doesn't exist" });
         }
 
         if (!Script.Versions.find(x => x === Version)) {
-            return reply.status(400).send({ error: "This version doesn't exist" });
+            return reply.status(404).send({ error: "This version doesn't exist" });
         }
         
         if (Script.Version === Version) {
@@ -842,11 +842,11 @@ async function routes(fastify, options) {
 
         const Project = await Database.GetProject(ProjectID);
         if (!Project) {
-            return reply.status(400).send({ error: "This project doesn't exist" });
+            return reply.status(404).send({ error: "This project doesn't exist" });
         }
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
-            return reply.status(400).send({ error: "This project isn't owned by you" });
+            return reply.status(403).send({ error: "This project isn't owned by you" });
         }
 
         SuccessWebhook = SuccessWebhook || Project.SuccessWebhook;
@@ -907,11 +907,11 @@ async function routes(fastify, options) {
         const Project = await Database.GetProject(ProjectID);
 
         if (!Project) {
-            return reply.status(400).send({ error: "This project doesn't exist" });
+            return reply.status(404).send({ error: "This project doesn't exist" });
         }
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
-            return reply.status(400).send({ error: "You don't own this project" });
+            return reply.status(403).send({ error: "You don't own this project" });
         }
 
         const Users = await Database.GetUsers(ProjectID);
@@ -924,11 +924,11 @@ async function routes(fastify, options) {
         const Project = await Database.GetProject(ProjectID);
 
         if (!Project) {
-            return reply.status(400).send({ error: "This project doesn't exist" });
+            return reply.status(404).send({ error: "This project doesn't exist" });
         }
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
-            return reply.status(400).send({ error: "You don't own this project" });
+            return reply.status(403).send({ error: "You don't own this project" });
         }
 
         const Scripts = await Database.GetScripts(Project.id);
@@ -942,11 +942,11 @@ async function routes(fastify, options) {
 
         const Project = await Database.GetProject(ProjectID);
         if (!Project) {
-            return reply.status(400).send({ error: "This project doesn't exist" });
+            return reply.status(404).send({ error: "This project doesn't exist" });
         }
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
-            return reply.status(400).send({ error: "This project isn't owned by you" });
+            return reply.status(403).send({ error: "This project isn't owned by you" });
         }
 
         try {
@@ -969,12 +969,12 @@ async function routes(fastify, options) {
         const ProjectID = request.params.id;
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
-            return reply.status(400).send({ error: "You don't own this project" });
+            return reply.status(403).send({ error: "You don't own this project" });
         }
 
         const Script = await Database.GetScript(ProjectID, ScriptID);
         if (!Script) {
-            return reply.status(400).send({ error: "This script doesn't exist" });
+            return reply.status(404).send({ error: "This script doesn't exist" });
         }
 
         try {
@@ -1034,7 +1034,7 @@ async function routes(fastify, options) {
         }
 
         if (Webhook.Owner !== request.APIKey) {
-            return reply.status(400).send({ error: "You don't own this webhook" });
+            return reply.status(404).send({ error: "You don't own this webhook" });
         }
 
         try {

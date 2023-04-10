@@ -53,6 +53,7 @@ fastify.register(require("@fastify/websocket"), {
 
 fastify.register(require("./routes/websocket"));
 fastify.register(require("./routes/script"), { prefix: "/s" });
+fastify.setErrorHandler((error, request, reply) => reply.send({ error: error.message }));
 
 setInterval(async () => {
     await fetch("https://betteruptime.com/api/v1/heartbeat/NP8ozm4r7VGmMW7cgP7SvBP4");
