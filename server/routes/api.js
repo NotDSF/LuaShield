@@ -635,7 +635,7 @@ async function routes(fastify, options) {
 
         try {
             let Info = await Database.ResetHWID(Existing.id);
-            reply.send(Info);
+            reply.send({ success: true });
         } catch (er) {
             reply.status(500).send({ error: "There was an issue while resetting this users HWID" });
         }
