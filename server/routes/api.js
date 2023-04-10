@@ -579,7 +579,7 @@ async function routes(fastify, options) {
 
         const Existing = await Database.GetUser(Username, ProjectID);
         if (!Existing) {
-            return reply.status(400).send({ error: "This user doesn't exist" });
+            return reply.status(404).send({ error: "This user doesn't exist" });
         }
 
         if (!Expiry && !MaxExecutions && !Note && !DiscordID && Whitelisted === Existing.Whitelisted) {
@@ -683,6 +683,15 @@ async function routes(fastify, options) {
     fastify.delete("/projects/:id/users", { schema: { headers: HeadersSchema, body: DeleteUserSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ProjectID = request.params.id;
         const Username = request.body.username;
+
+        if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
+            return reply.status(403).send({ error: "You don't own this project" });
+        }
+
+        const User = await Database.GetUser(Username, ProjectID);
+        if (!User) {
+            return reply.status(404).send({ error: "This user doesn't exist" });
+        }
 
         try {
             await Database.DeleteUser(ProjectID, Username);
