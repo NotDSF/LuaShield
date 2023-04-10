@@ -574,7 +574,7 @@ async function routes(fastify, options) {
         }
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
-            return reply.status(400).send({ error: "You don't own this project" });
+            return reply.status(403).send({ error: "You don't own this project" });
         }
 
         const Existing = await Database.GetUser(Username, ProjectID);
@@ -660,7 +660,7 @@ async function routes(fastify, options) {
         }
 
         if (!await Database.ProjectOwnedByBuyer(request.APIKey, ProjectID)) {
-            return reply.status(400).send({ error: "You don't own this project" });
+            return reply.status(403).send({ error: "You don't own this project" });
         }
 
         const Existing = await Database.GetUser(Username, ProjectID);
