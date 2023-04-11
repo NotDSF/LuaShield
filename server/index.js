@@ -2,6 +2,7 @@ const { existsSync, mkdirSync, readFileSync } = require("fs");
 const fetch = require("node-fetch");
 const path = require("path");
 const cors = require("@fastify/cors");
+const ratelimit = require("@fastify/rate-limit");
 require("dotenv").config()
 
 let options = {
@@ -41,6 +42,11 @@ global.AuthenticationStats = {
 }
 
 fastify.register(cors);
+fastify.register(ratelimit, {
+    max: 60,
+    timeWindow: "1 minute"
+});
+
 fastify.register(require("./routes/auth"), { prefix: "/auth" });
 fastify.register(require("./routes/verify"), { prefix: "/verify" });
 fastify.register(require("./routes/api"));

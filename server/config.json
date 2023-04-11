@@ -29,7 +29,7 @@
     },
     "subscription_data": {
         "max_projects": 20,
-        "max_scripts": 100,
+        "max_scripts": 50,
         "max_obfuscations": 3000
     },
     "discord": "https://discord.gg/X6YbZTdMee"

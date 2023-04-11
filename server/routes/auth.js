@@ -344,7 +344,7 @@ async function routes(fastify, options) {
 		})
 	});
 
-	fastify.get(`/version`, (request, reply) => {
+	fastify.get("/version", (request, reply) => {
 		if (!request.Exploit) return;
 		WhitelistTracepath.set(request.HWID, {
 			version: true
@@ -390,7 +390,7 @@ async function routes(fastify, options) {
 		}
 
 		WhitelistJSXToken.set(request.IPAddress, Data);
-		reply.send(EncodeJSON({ Token: NewToken }, HWID));
+		reply.send(EncodeJSON({ Token: NewToken, Version: config.version }, HWID));
 	});
 }
 

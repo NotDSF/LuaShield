@@ -8,6 +8,7 @@ const { Luraph } = require("luraph");
 const { readFileSync, mkdirSync, writeFileSync, existsSync, rmSync } = require("fs");
 const { subscription_data } = require("../config.json");
 const { UserWebhook, CheckWebhook } = require("../modules/webhooks");
+const ratelimit = require("@fastify/rate-limit");
 
 const Database = new database();
 const luraph = new Luraph(process.env.LURAPH_KEY);
@@ -38,7 +39,6 @@ function IncrementScriptVersion(version) {
  * @param {Object} options plugin options, refer to https://www.fastify.io/docs/latest/Reference/Plugins/#plugin-options
 */
 async function routes(fastify, options) {
-
     /**
      * @param {import("fastify").FastifyRequest} request
      * @param {import("fastify").FastifyReply} reply 
@@ -117,7 +117,7 @@ async function routes(fastify, options) {
     const WhiteistUserSchema = {
         type: "object",
         properties: {
-            username: { type: "string", maxLength: 20, minLength: 5 },
+            username: { type: "string", maxLength: 20, minLength: 3 },
             expire: { type: "number" },
             max_executions: { type: "number", minimum: 0 },
             whitelisted: { type: "boolean" },
@@ -130,7 +130,7 @@ async function routes(fastify, options) {
     const UpdateUserSchema = {
         type: "object",
         properties: {
-            username: { type: "string", maxLength: 20, minLength: 5 },
+            username: { type: "string", maxLength: 20, minLength: 3 },
             whitelisted: { type: "boolean" },
             expire: { type: "number" },
             max_executions: { type: "number", minimum: 0 },
@@ -422,7 +422,7 @@ async function routes(fastify, options) {
     });
 
     // Make Project
-    fastify.post("/projects", { schema: { headers: HeadersSchema, body: MakeProjectSchem, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.post("/projects", { schema: { headers: HeadersSchema, body: MakeProjectSchem, response: ResponseScema }, config: { rateLimit: { max: 5 } }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         if (request.Subscription.Projects >= subscription_data.max_projects) {
             return reply.status(403).send({ error: "You have reached your maximum amount of projects for your account" })
         }
@@ -480,7 +480,7 @@ async function routes(fastify, options) {
     });
 
     // Create Script
-    fastify.post("/projects/:id/scripts", { schema: { headers: HeadersSchema, body: AddScriptSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.post("/projects/:id/scripts", { schema: { headers: HeadersSchema, body: AddScriptSchema, response: ResponseScema }, config: { rateLimit: { max: 5 } }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         if (request.Subscription.Scripts >= subscription_data.max_scripts) {
             return reply.status(403).send({ error: "You have reached your maximum amount of scripts for your account" })
         }
@@ -702,7 +702,7 @@ async function routes(fastify, options) {
     });
 
     // Update Script
-    fastify.patch("/projects/:id/scripts", { schema: { headers: HeadersSchema, body: UpdateScriptSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.patch("/projects/:id/scripts", { schema: { headers: HeadersSchema, body: UpdateScriptSchema, response: ResponseScema }, config: { rateLimit: { max: 5 } }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ScriptID = request.body.script_id;
         const ScriptName = request.body.name;
         const ProjectID = request.params.id;
@@ -836,7 +836,7 @@ async function routes(fastify, options) {
     });
 
     // Update Project
-    fastify.patch("/projects/:id", { schema: { headers: HeadersSchema, body: UpdateProjectSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+    fastify.patch("/projects/:id", { schema: { headers: HeadersSchema, body: UpdateProjectSchema, response: ResponseScema }, config: { rateLimit: { max: 5 } }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         const ProjectID = request.params.id;
         const Name = request.body.name;
         let SuccessWebhook = request.body.success_webhook;

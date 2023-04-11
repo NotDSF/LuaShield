@@ -552,7 +552,6 @@ if LPH_OBFUSCATED then
   end;
 end;
 
-
 if Islclosure(Getrenv().print) then
   LPH_CRASH();
   while true do end;
@@ -598,6 +597,20 @@ end;
 if not EQ(IsSynF(function() end), true) then
   LPH_CRASH();
   while true do end;
+end;
+
+-- check if people try and stop heartheat (lol)
+do
+  local Test = RandomWord(5);
+  local Lmao;
+  coroutine.wrap(function() 
+    Lmao = Test;
+  end)();
+
+  if not EQ(Lmao, Test) then
+    LPH_CRASH();
+    while true do end;
+  end;
 end;
 
 local function HashString(str) 
@@ -942,6 +955,11 @@ for _, v in pairs(JSONResponse) do
                         end;
 
                         local Data = DecodeJSON(Response.Body);
+                        if Data.Version ~= whitelistVersion then
+                          LPH_CRASH();
+                          while true do end;
+                        end;
+
                         recievedJSXToken = Data.Token;
                       end;
                     end)();
@@ -966,13 +984,3 @@ end;
 if not WLSuccess then
   LPH_CRASH();
 end;
-
-coroutine.wrap(function() 
-  while wait(5) do
-    -- Forced security update
-    if whitelistVersion ~= HttpGet("http://localhost/auth/version") then
-      LPH_CRASH();
-      while true do end;
-    end;
-  end;
-end)();
