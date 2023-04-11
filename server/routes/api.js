@@ -278,6 +278,7 @@ async function routes(fastify, options) {
             type: "object",
             properties: {
                 online: { type: "boolean" },
+                clients: { type: "number" }, 
                 authentication_speeds: {
                     type: "object",
                     properties: {
@@ -310,6 +311,7 @@ async function routes(fastify, options) {
         let Stats = global.AuthenticationStats;
         reply.send({
             online: true,
+            clients: Connected.size,
             authentication_speeds: {
                 synapse_x: {
                     average: (Stats.SynapseX.total / Stats.SynapseX.times) || 0
