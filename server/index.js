@@ -18,8 +18,17 @@ if (process.platform !== "win32") {
 
 const fastify = require("fastify")(options);
 
-if (!existsSync(path.join(__dirname, "../projects"))) {
-    mkdirSync(path.join(__dirname, "../projects"));
+if (!existsSync(path.join(__dirname, "../files"))) {
+    mkdirSync(path.join(__dirname, "../files"));
+}
+
+
+if (!existsSync(path.join(__dirname, "../files/projects"))) {
+    mkdirSync(path.join(__dirname, "../files/projects"));
+}
+
+if (!existsSync(path.join(__dirname, "../files/logs"))) {
+    mkdirSync(path.join(__dirname, "../files/logs"));
 }
 
 global.WebhookTokens = new Set();

@@ -5,7 +5,7 @@ const macros = require("../macros/index");
 const path = require("path");
 const validator = require("email-validator");
 const { Luraph } = require("luraph");
-const { readFileSync, mkdirSync, writeFileSync, existsSync, rmSync } = require("fs");
+const { readFileSync, mkdirSync, writeFileSync, existsSync, rmSync, read, readFile } = require("fs");
 const { subscription_data } = require("../config.json");
 const { UserWebhook, CheckWebhook } = require("../modules/webhooks");
 const ratelimit = require("@fastify/rate-limit");
@@ -32,6 +32,19 @@ function IncrementScriptVersion(version) {
     }
 
     return `v${Collums.join(".")}`;
+}
+
+function AddToAuditLog(Username, IP, Log) {
+    if (!existsSync(path.join(__dirname, `../../files/logs/${Username}.json`))) return;
+
+    let Data = JSON.parse(readFileSync(path.join(__dirname, `../../files/logs/${Username}.json`)));
+    Data.push({
+        timestamp: Date.now(),
+        ip: IP,
+        message: Log
+    });
+
+    writeFileSync(path.join(__dirname, `../../files/logs/${Username}.json`), JSON.stringify(Data));
 }
 
 /**
@@ -64,6 +77,7 @@ async function routes(fastify, options) {
         request.Subscription = Subscription;
         request.APIKey = APIKey;
         request.Admin = Buyer.Admin;
+        request.BuyerUsername = Buyer.Username;
     }
 
     const HeadersSchema = {
@@ -349,6 +363,11 @@ async function routes(fastify, options) {
         const APIKey = crypto.randomUUID();
         try {
             await Database.AddBuyer(Email, Username, crypto.sha512(Password), APIKey, SubscriptionID);
+
+            if (!existsSync(path.join(__dirname, `../../files/logs/${Username}.json`))) {
+                writeFileSync(path.join(__dirname, `../../files/logs/${Username}.json`), "[]");
+            }
+
             return reply.send({ APIKey: APIKey });
         } catch (er) {
             return reply.status(500).send({ error: "There was an error with creating your account" });
@@ -363,6 +382,8 @@ async function routes(fastify, options) {
         if (!Buyer) {
             return reply.status(401).send({ error: "Incorrect username or password" });
         }
+
+        AddToAuditLog(Username, request.headers["cf-connecting-ip"] || request.ip, "Logged in");
 
         const Subscription = await Database.GetSubscription(Buyer.SubscriptionID);
         Buyer.Subscription = Subscription;
@@ -380,9 +401,13 @@ async function routes(fastify, options) {
         }
 
         try {
+            if (existsSync(path.join(__dirname, `../../files/logs/${Username}.json`))) {
+                rmSync(path.join(__dirname, `../../files/logs/${Username}.json`));
+            }
+
             for (let project of Buyer.Projects) {
-                if (existsSync(path.join(__dirname, `../../projects/${project}`))) {
-                    rmSync(path.join(__dirname, `../../projects/${project}`), { force: true, recursive: true });
+                if (existsSync(path.join(__dirname, `../../files/projects/${project}`))) {
+                    rmSync(path.join(__dirname, `../../files/projects/${project}`), { force: true, recursive: true });
                 }
                 await Database.DeleteProject(project, Buyer.APIKey);
             }
@@ -419,6 +444,11 @@ async function routes(fastify, options) {
     fastify.get("/account", { schema: { headers: HeadersSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
         let Info = await Database.GetBuyerFromAPIKey(request.APIKey);
         reply.send(Info);
+    });
+
+    fastify.get("/audit_logs", { schema: { headers: HeadersSchema, response: ResponseScema }, websocket: false, preHandler: AuthenticationHandler }, async (request, reply) => {
+        let Info = await Database.GetBuyerFromAPIKey(request.APIKey);
+        reply.send(readFileSync(path.join(__dirname, `../../files/logs/${Info.Username}.json`)));
     });
 
     // Make Project
@@ -471,11 +501,13 @@ async function routes(fastify, options) {
             await Database.SubscriptionIncrementProjectCount(request.Subscription.SubscriptionID, 1);
             Information = await Database.MakeProject(Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, Exploits, request.APIKey);
             await Database.UpdateBuyerProjects(request.APIKey, Information.id);
+            AddToAuditLog(request.BuyerUsername, request.headers["cf-connecting-ip"] || request.ip, `Made a project called ${Name}`);
         } catch (er) {
+            console.log(er);
             return reply.status(500).send({ error: "There was an issue while creating this project" });
         }
         
-        mkdirSync(path.join(__dirname, `../../projects/${Information.id}`)); // make folder in projects for project
+        mkdirSync(path.join(__dirname, `../../files/projects/${Information.id}`)); // make folder in projects for project
         reply.send(Information);
     });
 
@@ -514,6 +546,7 @@ async function routes(fastify, options) {
         try {
             await Database.SubscriptionIncrementScriptCount(request.Subscription.SubscriptionID, 1);
             Info = await Database.MakeScript(ProjectID, ScriptName, "v1.0.0");
+            AddToAuditLog(request.BuyerUsername, request.headers["cf-connecting-ip"] || request.ip, `Made a script called ${ScriptName}`);
         } catch (er) {   
             console.log(er);
             return reply.status(500).send({ error: "There was an issue while creating this script" });
@@ -549,8 +582,8 @@ async function routes(fastify, options) {
             const { data } = await luraph.downloadResult(jobId);
 
             await Database.SubscriptionIncrementObfuscationsCount(request.Subscription.SubscriptionID, 1);
-            mkdirSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}`));
-            writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), data);
+            mkdirSync(path.join(__dirname, `../../files/projects/${ProjectID}/${Info.id}`));
+            writeFileSync(path.join(__dirname, `../../files/projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), data);
 
             Info.Loader = `https://luashield.com/s/${ProjectID}/${Info.id}`;
             reply.send(Info);
@@ -672,6 +705,7 @@ async function routes(fastify, options) {
         try {
             let Info = await Database.AddUser(Username, crypto.sha512(Key), ProjectID, Expiry ? Expiry * 1000 : undefined, MaxExecutions, Whitelisted, Note, DiscordID);
             Info.Key = Key;
+            AddToAuditLog(request.BuyerUsername, request.headers["cf-connecting-ip"] || request.ip, `Created a user for project ${ProjectID} with username ${Username}`);
             reply.send(Info);
         } catch (er) {
             console.log(er);
@@ -695,6 +729,7 @@ async function routes(fastify, options) {
 
         try {
             await Database.DeleteUser(ProjectID, Username);
+            AddToAuditLog(request.BuyerUsername, request.headers["cf-connecting-ip"] || request.ip, `Deleted a user for project ${ProjectID} with username ${Username}`);
             reply.send({ success: true });
         } catch (er) {
             reply.status(500).send({ error: "Something went wrong trying to delete this user" });
@@ -765,8 +800,9 @@ async function routes(fastify, options) {
             const { data } = await luraph.downloadResult(jobId);
 
             await Database.SubscriptionIncrementObfuscationsCount(request.Subscription.SubscriptionID, 1);
-            writeFileSync(path.join(__dirname, `../../projects/${ProjectID}/${ScriptInfo.id}/${GeneratedVersion}.lua`), data);
+            writeFileSync(path.join(__dirname, `../../files/projects/${ProjectID}/${ScriptInfo.id}/${GeneratedVersion}.lua`), data);
             
+            AddToAuditLog(request.BuyerUsername, request.headers["cf-connecting-ip"] || request.ip, `Updated script ${ScriptName}`);
             reply.send(ScriptInfo);
         } catch (er) {
             return reply.status(500).send({ error: er.toString() });
@@ -825,8 +861,8 @@ async function routes(fastify, options) {
 
         try {
             let Info = await Database.DeleteScriptVersion(ScriptID, Version);
-            if (existsSync(path.join(__dirname, `../../projects/${ProjectID}/${Script.id}/${Version}.lua`))) {
-                rmSync(path.join(__dirname, `../../projects/${ProjectID}/${Script.id}/${Version}.lua`))
+            if (existsSync(path.join(__dirname, `../../files/projects/${ProjectID}/${Script.id}/${Version}.lua`))) {
+                rmSync(path.join(__dirname, `../../files/projects/${ProjectID}/${Script.id}/${Version}.lua`))
             }
             reply.send(Info);
         } catch (er) {
@@ -892,6 +928,7 @@ async function routes(fastify, options) {
 
         try {
             let Info = await Database.UpdateProject(ProjectID, Name, SuccessWebhook, BlacklistWebhook, UnauthorizedWebhook, Exploits, Online);
+            AddToAuditLog(request.BuyerUsername, request.headers["cf-connecting-ip"] || request.ip, `Updated project ${Info.Name}`);
             reply.send(Info);
         } catch (er) {
             return reply.status(500).send({ error: "There was an issue while updating this project" });
@@ -959,12 +996,13 @@ async function routes(fastify, options) {
         }
 
         try {
-            if (existsSync(path.join(__dirname, `../../projects/${ProjectID}/`))) {
-                rmSync(path.join(__dirname, `../../projects/${ProjectID}/`), { force: true, recursive: true });
+            if (existsSync(path.join(__dirname, `../../files/projects/${ProjectID}/`))) {
+                rmSync(path.join(__dirname, `../../files/projects/${ProjectID}/`), { force: true, recursive: true });
             }
 
             await Database.SubscriptionIncrementProjectCount(request.Subscription.SubscriptionID, -1);
             await Database.DeleteProject(ProjectID, request.APIKey);
+            AddToAuditLog(request.BuyerUsername, request.headers["cf-connecting-ip"] || request.ip, `Deleted project ${Project.Name}`);
             reply.send({ success: true });
         } catch (er) {
             console.log(er);
@@ -987,12 +1025,13 @@ async function routes(fastify, options) {
         }
 
         try {
-            if (existsSync(path.join(__dirname, `../../projects/${ProjectID}/${ScriptID}`))) {
-                rmSync(path.join(__dirname, `../../projects/${ProjectID}/${ScriptID}`), { force: true, recursive: true });
+            if (existsSync(path.join(__dirname, `../../files/projects/${ProjectID}/${ScriptID}`))) {
+                rmSync(path.join(__dirname, `../../files/projects/${ProjectID}/${ScriptID}`), { force: true, recursive: true });
             }
 
             await Database.SubscriptionIncrementScriptCount(request.Subscription.SubscriptionID, -1);
             await Database.DeleteScript(ScriptID);
+            AddToAuditLog(request.BuyerUsername, request.headers["cf-connecting-ip"] || request.ip, `Deleted script ${Script.Name}`);
             reply.send({ success: true });
         } catch (er) {
             console.log(er);
@@ -1166,14 +1205,20 @@ async function routes(fastify, options) {
             return reply.status(400).send({ error: "This buyer doesn't exist" });
         }
 
+        /*
         if (Buyer.Admin) {
             return reply.status(400).send({ error: "You cannot delete an admin account" });
         }
+        */
 
         try {
+            if (existsSync(path.join(__dirname, `../../files/logs/${Buyer.Username}.json`))) {
+                rmSync(path.join(__dirname, `../../files/logs/${Buyer.Username}.json`));
+            }
+
             for (let project of Buyer.Projects) {
-                if (existsSync(path.join(__dirname, `../../projects/${project}`))) {
-                    rmSync(path.join(__dirname, `../../projects/${project}`), { force: true, recursive: true });
+                if (existsSync(path.join(__dirname, `../../files/projects/${project}`))) {
+                    rmSync(path.join(__dirname, `../../files/projects/${project}`), { force: true, recursive: true });
                 }
                 await Database.DeleteProject(project, Buyer.APIKey);
             }
@@ -1267,6 +1312,9 @@ async function routes(fastify, options) {
         try {
             let Info = await Database.CreateSubscription(Expire.getTime(), Reset.getTime());
             let Buyer = await Database.CreateAdminBuyer(Email, Username, crypto.sha512(Password), APIKey, Info.SubscriptionID);
+            if (!existsSync(path.join(__dirname, `../../files/logs/${Username}.json`))) {
+                writeFileSync(path.join(__dirname, `../../files/logs/${Username}.json`), "[]");
+            }
             reply.send(Buyer);
         } catch (er) {
             console.log(er);

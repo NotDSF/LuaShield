@@ -24,7 +24,7 @@ async function routes(fastify, options) {
             return reply.send("error('LuaShield: This script doesn't exist.')");
         }
 
-        //reply.send(readFileSync(path.join(__dirname, `../../projects/${ProjectID}/${ScriptID}/${Script.Version}.lua`)))
+        //reply.send(readFileSync(path.join(__dirname, `../../files/projects/${ProjectID}/${ScriptID}/${Script.Version}.lua`)))
     });
 }
 
