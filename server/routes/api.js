@@ -555,8 +555,8 @@ async function routes(fastify, options) {
         }
 
         let Whitelist = readFileSync(path.join(__dirname, "../../client/client.lua"), "utf-8")
-            .replace(Regex("ws://localhost:8880"), "wss://api.luashield.com")
-            .replace(Regex("http://localhost"), "https://api.luashield.com")
+            .replace(Regex("ws://localhost:8080"), "wss://api.luashield.com")
+            .replace(Regex("http://localhost:8080"), "https://api.luashield.com")
             .replace("local function LPH_CRASH() error(\"Blocked crash\"); end;", "")
             .replace("PROJECT_ID", ProjectID)
             .replace("SCRIPT_ID", Info.id)
@@ -774,8 +774,8 @@ async function routes(fastify, options) {
         }
         
         let Whitelist = readFileSync(path.join(__dirname, "../../client/client.lua"), "utf-8")
-            .replace(Regex("ws://localhost:8880"), "wss://api.luashield.com")
-            .replace(Regex("http://localhost"), "https://api.luashield.com")
+            .replace(Regex("ws://localhost:8080"), "wss://api.luashield.com")
+            .replace(Regex("http://localhost:8080"), "https://api.luashield.com")
             .replace("local function LPH_CRASH() error(\"Blocked crash\"); end;", "")
             .replace("PROJECT_ID", ProjectID)
             .replace("SCRIPT_ID", ScriptInfo.id)

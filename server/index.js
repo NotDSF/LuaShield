@@ -9,13 +9,6 @@ let options = {
     logger: process.platform === "win32"
 }
 
-if (process.platform !== "win32") {
-    options.https = {
-        key: readFileSync(path.join(__dirname, 'luashield.key'), "utf-8"),
-        cert: readFileSync(path.join(__dirname, 'luashield.pem'), "utf-8")
-    }
-}
-
 const fastify = require("fastify")(options);
 
 if (!existsSync(path.join(__dirname, "../files"))) {
@@ -76,7 +69,7 @@ setInterval(async () => {
 
 (async () => {
     try {
-        await fastify.listen({ port: process.platform == "win32" ? 80 : 443, host: "0.0.0.0" });
+        await fastify.listen({ port: 8080, host: "0.0.0.0" });
         await fetch("https://betteruptime.com/api/v1/heartbeat/NP8ozm4r7VGmMW7cgP7SvBP4");
         console.log("Server is now listening to port 80")
     } catch (er) {

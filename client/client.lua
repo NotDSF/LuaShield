@@ -167,7 +167,7 @@ local function LS_SecureWebhook(Url, body)
 end;
 
 do
-  local CurrentVersion = HttpGet(LPH_ENCSTR("http://localhost/auth/version"));
+  local CurrentVersion = HttpGet(LPH_ENCSTR("http://localhost:8080/auth/version"));
   if whitelistVersion ~= CurrentVersion then
     return print(string.format("This script is outdated, please tell the owner to update it. %s -> %s", whitelistVersion, CurrentVersion));
   end;
@@ -374,7 +374,7 @@ end;
 -- Little Trolling Eh
 do
   local Sanity = LS_REQUEST({
-    Url = LPH_ENCSTR("http://localhost/auth/info"),
+    Url = LPH_ENCSTR("http://localhost:8080/auth/info"),
     Method = "GET",
     Headers = {
       ["nptxxjzypm"] = ProjectID,
@@ -420,7 +420,7 @@ do
 end;
 
 local EndPoints, HWID, synUserId = (function()
-  local Data = JSONDecode(HttpGet(LPH_ENCSTR("http://localhost/auth/DBMNOUCcpGDlDcrFtbUXuAGePzbOqnFxKwhPCVroCuFtuXfnpsfiwkAfQXvopcdzMpSuPvobgmDchPepdUaDpXKbUQEAzmjazbDx")));
+  local Data = JSONDecode(HttpGet(LPH_ENCSTR("http://localhost:8080/auth/DBMNOUCcpGDlDcrFtbUXuAGePzbOqnFxKwhPCVroCuFtuXfnpsfiwkAfQXvopcdzMpSuPvobgmDchPepdUaDpXKbUQEAzmjazbDx")));
   local JSON = Data["1"];
   local Headers = Data["2"];
 
@@ -439,7 +439,7 @@ end)();
 local LS_ScriptName, LS_ScriptVersion, LS_Exploit, LS_Executions, LS_CrackAttempts, LS_Username;
 
 local function FingerPrint()
-  local Response = HttpGet(format("http://localhost/auth/%s", EndPoints[1]));
+  local Response = HttpGet(format("http://localhost:8080/auth/%s", EndPoints[1]));
   local JSON = JSONDecode(Response);
   return {
     JSON["1"],
@@ -724,7 +724,7 @@ CURRENT_EXPLOIT == IDENTIFIERS.SYNAPSE and syn.websocket.connect or
 CURRENT_EXPLOIT == IDENTIFIERS.SYNAPSEV3 and WebsocketClient.new or
 WebSocket.connect;
 
-local WS, WebsocketKey = Connect("ws://localhost/ws");
+local WS, WebsocketKey = Connect("ws://localhost:8080/ws");
 if CURRENT_EXPLOIT == IDENTIFIERS.SYNAPSEV3 then
   WS:Connect();
 end;
@@ -745,7 +745,7 @@ end;
 --local CPU_Architecture = "2"; -- dumpstring(""):byte(9, 9) < 8 and "1" or "2"; -- 1 = 32Bit, 2 = 64Bit
 local Response = LS_REQUEST({
   Method = "GET",
-  Url = format(LPH_ENCSTR("http://localhost/auth/%s?%s=%s&%s=%s&%s=%s"), EndPoints[2], RandomWord(5), HWID, RandomWord(5), Key, RandomWord(5), RequestHash),
+  Url = format(LPH_ENCSTR("http://localhost:8080/auth/%s?%s=%s&%s=%s&%s=%s"), EndPoints[2], RandomWord(5), HWID, RandomWord(5), Key, RandomWord(5), RequestHash),
   Headers = {
     ["ornmprhyms"] = Fingerprint, 
     ["rnfkpggcvj"] = NumberId,
@@ -943,7 +943,7 @@ for _, v in pairs(JSONResponse) do
                       while wait(10) do
                         local Response = Request({
                           Method = "GET",
-                          Url = "http://localhost/auth/v/" .. recievedJSXToken
+                          Url = "http://localhost:8080/auth/v/" .. recievedJSXToken
                         });
 
                         if Response.StatusCode ~= 200 then
