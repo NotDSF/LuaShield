@@ -9,3 +9,4 @@ Development in general used to be something in my life which was an escape from 
 
 ## Donate
 33thjykAXTgpCDYcETDzHeUpnC7CuiPquh - BTC Address
+https://www.paypal.com/paypalme/dsfisnotadsf - PayPal
