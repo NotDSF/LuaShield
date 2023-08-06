@@ -545,11 +545,24 @@ module.exports = class Database {
         });
     }
 
-    async DeleteScript(ScriptID) {
+    async DeleteScript(ScriptID, SubscriptionID) {
         return new Promise(async (resolve, reject) => {
             try {
-                const Result = await prisma.script.delete({ where: { id: ScriptID } });
-                resolve(Result);
+                const UpdateSubscription = prisma.subscription.update({
+                    where: { SubscriptionID },
+                    data: {
+                        Scripts: {
+                            increment: -1
+                        }
+                    }
+                });
+
+                const DeleteScript = prisma.script.delete({
+                    where: { id: ScriptID }
+                });
+
+                await prisma.$transaction([UpdateSubscription, DeleteScript]);
+                resolve();
             } catch (er) {
                 console.log(er);
                 reject();

@@ -1,1 +1,1 @@
-LS_SecureWebhook(1, true)
+print("Hello World")

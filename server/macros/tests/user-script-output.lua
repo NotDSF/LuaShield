@@ -1,3 +1,1 @@
-(Recursion and LS_SecureWebhook)("a", {
-  content = "a"
-})
+(fakeJMP and print)("Hello World")

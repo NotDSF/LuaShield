@@ -17,6 +17,7 @@ function Regex(expression) {
     return new RegExp(expression.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), "g");
 }
 
+// wHAT THE FUCK LOL
 function IncrementScriptVersion(version) {
     let Collums = version.slice(1).split(".").map(s => parseInt(s));
     Collums[2]++;
@@ -566,6 +567,7 @@ async function routes(fastify, options) {
         try {
             Whitelist = await macros(Whitelist);
 
+            /*
             const { jobId } = await luraph.createNewJob("main", Whitelist, `${Info.id}.lua`, {
                 INTENSE_VM_STRUCTURE: true,
                 TARGET_VERSION: "Luau Handicapped",
@@ -582,10 +584,11 @@ async function routes(fastify, options) {
 
 
             const { data } = await luraph.downloadResult(jobId);
+            */
 
             await Database.SubscriptionIncrementObfuscationsCount(request.Subscription.SubscriptionID, 1);
             mkdirSync(path.join(__dirname, `../../files/projects/${ProjectID}/${Info.id}`));
-            writeFileSync(path.join(__dirname, `../../files/projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), data);
+            writeFileSync(path.join(__dirname, `../../files/projects/${ProjectID}/${Info.id}/${GeneratedVersion}.lua`), Whitelist);
 
             Info.Loader = `https://luashield.com/s/${ProjectID}/${Info.id}`;
             reply.send(Info);
@@ -1027,12 +1030,13 @@ async function routes(fastify, options) {
         }
 
         try {
+
+            await Database.DeleteScript(ScriptID, request.Subscription.SubscriptionID);
+
             if (existsSync(path.join(__dirname, `../../files/projects/${ProjectID}/${ScriptID}`))) {
                 rmSync(path.join(__dirname, `../../files/projects/${ProjectID}/${ScriptID}`), { force: true, recursive: true });
             }
-
-            await Database.SubscriptionIncrementScriptCount(request.Subscription.SubscriptionID, -1);
-            await Database.DeleteScript(ScriptID);
+            
             AddToAuditLog(request.BuyerUsername, request.headers["cf-connecting-ip"] || request.ip, `Deleted script ${Script.Name}`);
             reply.send({ success: true });
         } catch (er) {
